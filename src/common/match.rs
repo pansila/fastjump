@@ -1,9 +1,9 @@
 use lazy_static::lazy_static;
 use log::{debug, trace};
 use std::borrow::Cow;
-use std::collections::HashMap;
 use std::path::{Component, Path, PathBuf};
 use strsim::normalized_levenshtein;
+use crate::database::Database;
 
 const ENTRIES_COUNT: usize = 9; // TODO
 const PKGNAME: &str = env!("CARGO_PKG_NAME");
@@ -23,7 +23,7 @@ lazy_static! {
 /// Please see examples in the tests
 pub fn match_anywhere<'a>(
     needles: &[PathBuf],
-    data: &'a HashMap<PathBuf, f32>,
+    data: &'a Database,
     ignore_case: bool,
 ) -> Vec<(Cow<'a, Path>, f32)> {
     let mut candidates: Vec<(Cow<Path>, f32)> = Vec::with_capacity(ENTRIES_COUNT);
@@ -62,7 +62,7 @@ pub fn match_anywhere<'a>(
 /// Please see examples in the tests
 pub fn match_consecutive<'a>(
     needles: &[PathBuf],
-    data: &'a HashMap<PathBuf, f32>,
+    data: &'a Database,
     ignore_case: bool,
 ) -> Vec<(Cow<'a, Path>, f32)> {
     let mut candidates: Vec<(Cow<Path>, f32)> = Vec::with_capacity(ENTRIES_COUNT);
@@ -110,7 +110,7 @@ pub fn match_consecutive<'a>(
 /// Please see examples in the tests
 pub fn match_fuzzy<'a>(
     needles: &[PathBuf],
-    data: &'a HashMap<PathBuf, f32>,
+    data: &'a Database,
     ignore_case: bool,
     threshold: Option<f64>,
 ) -> Vec<(Cow<'a, Path>, f32)> {

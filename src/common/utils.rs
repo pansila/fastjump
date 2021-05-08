@@ -1,5 +1,6 @@
 use crate::common::r#match::{match_anywhere, match_consecutive, match_fuzzy};
 use crate::common::opts::Opts;
+use crate::database::Database;
 #[cfg(target_family = "unix")]
 use anyhow::bail;
 use anyhow::Result;
@@ -9,7 +10,6 @@ use log::LevelFilter;
 use log::{debug, info};
 use std::borrow::Cow;
 use std::cmp::Ordering;
-use std::collections::HashMap;
 use std::fmt::Display;
 use std::iter::Iterator;
 use std::path::{Component, Path, PathBuf};
@@ -196,7 +196,7 @@ fn detect_smartcase(needles: &[PathBuf]) -> bool {
 /// 1. if found no matched result
 /// 2. if needles is empty
 pub fn find_matches<'a>(
-    data: &'a HashMap<PathBuf, f32>,
+    data: &'a Database,
     needles: &[PathBuf],
     check_existence: bool,
 ) -> Vec<(Cow<'a, Path>, f32)> {

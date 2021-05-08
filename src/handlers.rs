@@ -1,9 +1,8 @@
 use crate::common::utils::{find_matches, normalize_path, print_item, print_tab_menu};
 use crate::common::config::Config;
-use crate::database::save_data;
+use crate::database::Database;
 use anyhow::{bail, Context, Result};
 use log::info;
-use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::cmp::Ordering;
 
@@ -15,7 +14,7 @@ const TAB_SEPARATOR: &str = "__";
 /// with resulting duplicate entries in the database than a single canonical path.
 pub fn handle_add_path(
     config: &Config,
-    data: &mut HashMap<PathBuf, f32>,
+    data: &mut Database,
     path: &Path,
     weight: Option<f32>,
     dryrun: bool,
@@ -34,7 +33,7 @@ pub fn handle_add_path(
 
     data.insert(entry, value);
     if !dryrun {
-        save_data(&config, &data)?;
+        data.save(&config)?;
     }
 
     Ok(())
@@ -43,7 +42,7 @@ pub fn handle_add_path(
 /// Decrease or zero out a path.
 pub fn handle_decrease_path(
     config: &Config,
-    data: &mut HashMap<PathBuf, f32>,
+    data: &mut Database,
     path: &Path,
     weight: Option<f32>,
     dryrun: bool,
@@ -55,14 +54,14 @@ pub fn handle_decrease_path(
 
     data.insert(entry, value);
     if !dryrun {
-        save_data(&config, &data)?;
+        data.save(&config)?;
     }
 
     Ok(())
 }
 
 /// print the statistics from the database
-pub fn handle_print_stats(data: &HashMap<PathBuf, f32>, data_path: &Path) {
+pub fn handle_print_stats(data: &Database, data_path: &Path) {
     info!("Weight\t\tPath");
     info!("{}", "-".repeat(80));
     let mut count_vec: Vec<_> = data.iter().collect();
@@ -97,7 +96,7 @@ pub fn handle_print_stats(data: &HashMap<PathBuf, f32>, data_path: &Path) {
 /// ```
 ///        [needle]__[index]__[path]
 /// ```
-fn find_results(needles: &[PathBuf], data: &HashMap<PathBuf, f32>, complete: bool) -> Result<()> {
+fn find_results(needles: &[PathBuf], data: &Database, complete: bool) -> Result<()> {
     // TODO: invalidate instead of normalize?
     let needles: Vec<_> = needles.iter().map(|x| normalize_path(x)).collect();
     let first_needle = needles
@@ -144,20 +143,20 @@ fn find_results(needles: &[PathBuf], data: &HashMap<PathBuf, f32>, complete: boo
 }
 
 /// Provide tab completion hints
-pub fn handle_tab_completion(needles: &[PathBuf], data: &HashMap<PathBuf, f32>) -> Result<()> {
+pub fn handle_tab_completion(needles: &[PathBuf], data: &Database) -> Result<()> {
     find_results(needles, data, true)
 }
 
 /// Provide the result path best matched
-pub fn handle_jump(needles: &[PathBuf], data: &HashMap<PathBuf, f32>) -> Result<()> {
+pub fn handle_jump(needles: &[PathBuf], data: &Database) -> Result<()> {
     find_results(needles, data, false)
 }
 
-pub fn handle_purge(config: &Config, data: &mut HashMap<PathBuf, f32>, dryrun: bool) -> Result<()> {
+pub fn handle_purge(config: &Config, data: &mut Database, dryrun: bool) -> Result<()> {
     let old_entries = data.len();
     data.retain(|key, _| key.exists());
     if !dryrun {
-        save_data(&config, &data)?;
+        data.save(&config)?;
     }
     info!("Purged {} entries.", old_entries - data.len());
     Ok(())

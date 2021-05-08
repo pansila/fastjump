@@ -1,6 +1,6 @@
 [package]
 name = "fastjump"
-version = "0.1.1"
+version = "0.1.2"
 authors = ["Lin Zhou <pansila@163.com>"]
 edition = "2018"
 repository = "https://github.com/pansila/fastjump"
