@@ -15,15 +15,15 @@ We have [prebuilt binaries](https://github.com/pansila/fastjump/releases) availa
 (need more instructions here)
 
 # Features
-1. By re-writing in Rust, `fastjump` is more light-weight than python version of `autojump`. As the program itself is very short-running, the overhead of setting up and tearing down a whole Python VM could be overwhelming, especially on less capable hardware.
+- [x] By re-writing in Rust, `fastjump` is more light-weight than python version of `autojump`. As the program itself is very short-running, the overhead of setting up and tearing down a whole Python VM could be overwhelming, especially on less capable hardware.
 
    ```
    (some benchmarks need to go here)
    ```
-2. Using `serde` with `bincode` to provide a faster serialization/deserialization for the database.
-3. Injecting into the shell to stay in the shell's memory space to speed up command invoking much further (WIP).
-4. Single executable file if enable injecting technology to remove all messy scripts (WIP).
-5. Jump to any directory on Windows by integrating with bleeding fast file searcher [Everything](https://www.voidtools.com/) (WIP).
+- [x] Using `serde` with `bincode` to provide a faster serialization/deserialization for the database.
+- [ ] Injecting into the shell to stay in the shell's memory space to speed up command invoking much further (WIP).
+- [ ] Single executable file if enable injecting technology to remove all messy scripts (WIP).
+- [ ] Jump to any directory on Windows by integrating with bleeding fast file searcher [Everything](https://www.voidtools.com/) (WIP).
 
 # Compatibility
 1. All of the command line flags and arguments of `autojump` are implemented, and behave exactly like the original. All other shell features like tab completion should work too. (Except jc and jco; see below.)

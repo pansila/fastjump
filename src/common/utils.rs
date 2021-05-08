@@ -10,7 +10,7 @@ use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::fmt::Display;
 use std::iter::Iterator;
-use std::path::{Path, PathBuf, MAIN_SEPARATOR};
+use std::path::{Path, PathBuf, Component};
 
 const PKGNAME: &str = env!("CARGO_PKG_NAME");
 
@@ -128,43 +128,44 @@ pub fn into_level(verbose: u32) -> log::LevelFilter {
     }
 }
 
-/// Convert the lowercase drive name to an uppercase one on Windows
-pub fn normalize_path(path: &str) -> String {
-    #[cfg(target_family = "windows")]
-    {
-        let mut key = path.to_string();
-        let mut chars = key.chars();
-        let drive = chars.next();
-        let semicolon = chars.next();
-        if let Some(d) = drive {
-            if d.is_ascii_lowercase() && Some(':') == semicolon {
-                key.as_mut_str()
-                    .get_mut(0..1)
-                    .unwrap() // never fail
-                    .make_ascii_uppercase();
-                debug!("normalize the path from {} to {}", path, key);
+/// normalizatize and convert the lowercase drive name to an uppercase one on Windows
+pub fn normalize_path(path: &Path) -> PathBuf {
+    path.components()
+        .map(|x| {
+            if let Component::Prefix(prefix) = x {
+                // TODO
+                #[cfg(feature = "osstring_ascii")]
+                {
+                    let p = prefix.as_os_str().to_os_string();
+                    p.make_ascii_uppercase();
+                    p
+                }
+                #[cfg(not(feature = "osstring_ascii"))]
+                {prefix.as_os_str().to_string_lossy().to_ascii_uppercase()}
+            } else {
+                #[cfg(feature = "osstring_ascii")]
+                {x.as_os_str().to_os_string()}
+                #[cfg(not(feature = "osstring_ascii"))]
+                {x.as_os_str().to_string_lossy().into_owned()}
             }
-        }
-        key
-    }
-    #[cfg(target_family = "unix")]
-    path.to_string()
+        })
+        .collect()
 }
 
 pub fn print_item<T: Display>((path, weight): (T, f32)) {
     info!("{:.2}\t\t{}", weight, path);
 }
 
-pub fn print_stats(data: &HashMap<String, f32>, data_path: &Path) {
+pub fn print_stats(data: &HashMap<PathBuf, f32>, data_path: &Path) {
     info!("Weight\t\tPath");
     info!("{}", "-".repeat(80));
     let mut count_vec: Vec<_> = data.iter().collect();
     count_vec.sort_by(|a, b| b.1.partial_cmp(a.1).unwrap_or(Ordering::Equal));
     for (path, weight) in count_vec {
-        print_item((path.as_str(), *weight));
+        print_item((path.display(), *weight));
     }
 
-    let sum = data.values().sum::<f32>();
+    let sum: f32 = data.values().sum();
     info!("{}", "_".repeat(80));
     info!("{:.2}\t\ttotal weight", sum);
     info!(
@@ -174,12 +175,10 @@ pub fn print_stats(data: &HashMap<String, f32>, data_path: &Path) {
     );
 
     if let Ok(cwd) = std::env::current_dir() {
-        if let Some(key) = cwd.as_path().to_str() {
-            info!(
-                "{:.2}\t\tcurrent directory weight",
-                data.get(&normalize_path(key)).unwrap_or(&0.0)
-            );
-        }
+        info!(
+            "{:.2}\t\tcurrent directory weight",
+            data.get(&normalize_path(&cwd)).unwrap_or(&0.0)
+        );
     }
 
     info!("");
@@ -204,26 +203,15 @@ pub fn print_tab_menu<'a>(
     }
 }
 
-/// edge case to allow '/' as a valid path
-pub fn sanitize<'a>(directory: impl Iterator<Item = &'a String>) -> impl Iterator<Item = &'a str> {
-    #[cfg(not(target_os = "windows"))]
-    return directory.map(|path| {
-        if path == &MAIN_SEPARATOR.to_string() {
-            path.as_str()
-        } else {
-            path.trim_end_matches(MAIN_SEPARATOR)
-        }
-    });
-    #[cfg(target_os = "windows")]
-    return directory.map(|path| path.trim_end_matches(MAIN_SEPARATOR));
-}
-
 /// If any needles contain an uppercase letter then use case sensitive
 /// searching. Otherwise use case insensitive searching.
-fn detect_smartcase(needles: &[&str]) -> bool {
-    needles
-        .iter()
-        .any(|&s| s.chars().any(|c| c.is_ascii_uppercase()))
+fn detect_smartcase(needles: &[PathBuf]) -> bool {
+    needles.iter().any(|s| {
+        s.to_string_lossy()
+            .as_ref()
+            .chars()
+            .any(|c| c.is_ascii_uppercase())
+    })
 }
 
 /// Return a vec containing matched result.
@@ -232,15 +220,16 @@ fn detect_smartcase(needles: &[&str]) -> bool {
 /// 1. if found no matched result
 /// 2. if needles is empty
 pub fn find_matches(
-    data: &HashMap<String, f32>,
-    needles: &[&str],
+    data: &HashMap<PathBuf, f32>,
+    needles: &[PathBuf],
     check_existence: bool,
 ) -> Vec<(String, f32)> {
-    if needles.len() == 0 || needles.get(0).unwrap().is_empty() {
-        // never fail
-        let mut candidates: Vec<(String, f32)> = Vec::with_capacity(1);
-        candidates.push(("".to_string(), 0.0));
-        return candidates;
+    if let Some(needle) = needles.get(0) {
+        if needle.as_os_str().is_empty() {
+            let mut candidates: Vec<(String, f32)> = Vec::with_capacity(1);
+            candidates.push(("".to_string(), 0.0));
+            return candidates;
+        }
     }
 
     let ignore_case = !detect_smartcase(needles);

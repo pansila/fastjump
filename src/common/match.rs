@@ -1,9 +1,8 @@
 use lazy_static::lazy_static;
 use log::{debug, trace};
-use regex::{escape, Regex};
 use std::borrow::Cow;
 use std::collections::HashMap;
-use std::path::MAIN_SEPARATOR;
+use std::path::{Component, Path, PathBuf};
 use strsim::normalized_levenshtein;
 
 const ENTRIES_COUNT: usize = 9; // TODO
@@ -23,25 +22,33 @@ lazy_static! {
 ///
 /// Please see examples in the tests
 pub fn match_anywhere(
-    needles: &[&str],
-    data: &HashMap<String, f32>,
+    needles: &[PathBuf],
+    data: &HashMap<PathBuf, f32>,
     ignore_case: bool,
 ) -> Vec<(String, f32)> {
-    let re = Regex::new(
-        format!(
-            "{}.*{}.*",
-            if ignore_case { "(?i)" } else { "" },
-            needles.join(".*")
-        )
-        .as_str(),
-    )
-    .expect("Invalid regex expression");
     let mut candidates: Vec<(String, f32)> = Vec::with_capacity(ENTRIES_COUNT);
 
     for (k, v) in data.iter() {
-        if re.is_match(k.as_str()) {
-            candidates.push((k.clone(), *v));
-            trace!("pushing ({}, {})", k, v);
+        let path = k.to_string_lossy();
+        if needles.iter().try_fold((), |_, needle| {
+            // TODO: do overlapped cases matter?
+            // TODO: does needles order matter?
+            if ignore_case {
+                if !path
+                    .to_ascii_lowercase()
+                    .contains(&needle.to_string_lossy().to_ascii_lowercase())
+                {
+                    return None;
+                }
+            } else {
+                if !path.contains(needle.to_string_lossy().as_ref()) {
+                    return None;
+                }
+            }
+            Some(())
+        }) != None {
+            trace!("pushing ({}, {})", path, v);
+            candidates.push((path.into_owned(), *v));
         }
     }
     candidates
@@ -49,31 +56,43 @@ pub fn match_anywhere(
 
 /// Matches consecutive needles at the end of a path.
 ///
+/// Each needle must be part of one of the components of the path.
+///
 /// Please see examples in the tests
 pub fn match_consecutive(
-    needles: &[&str],
-    data: &HashMap<String, f32>,
+    needles: &[PathBuf],
+    data: &HashMap<PathBuf, f32>,
     ignore_case: bool,
 ) -> Vec<(String, f32)> {
-    let escape_sep = escape(MAIN_SEPARATOR.to_string().as_str());
-    let regex_no_sep = format!("[^{}]*", escape_sep);
-    let regex_no_sep_end = format!("{}$", regex_no_sep);
-    let regex_one_sep = format!("{}{}{}", regex_no_sep, escape_sep, regex_no_sep);
-    let regex_needle = needles
-        .iter()
-        .map(|s| escape(s))
-        .collect::<Vec<_>>()
-        .join(regex_one_sep.as_str())
-        + regex_no_sep_end.as_str();
-    let re =
-        Regex::new(format!("{}{}", if ignore_case { "(?i)" } else { "" }, regex_needle).as_str())
-            .expect("Invalid regex expression");
     let mut candidates: Vec<(String, f32)> = Vec::with_capacity(ENTRIES_COUNT);
 
     for (k, v) in data.iter() {
-        if re.is_match(k.as_str()) {
-            candidates.push((k.clone(), *v));
-            trace!("pushing ({}, {})", k, v);
+        let mut comp_iter = k.components().rev();
+        if needles.iter().rev().try_fold((), |_, needle| {
+            // TODO: curdir and rootdir?
+            if let Some(Component::Normal(comp)) = comp_iter.next() {
+                if ignore_case {
+                    if !comp
+                        .to_string_lossy()
+                        .to_ascii_lowercase()
+                        .contains(&needle.to_string_lossy().to_ascii_lowercase())
+                    {
+                        return None;
+                    }
+                } else {
+                    if !comp.to_string_lossy().contains(needle.to_string_lossy().as_ref()) {
+                        return None;
+                    }
+                }
+            } else {
+                return None;
+            }
+            Some(())
+        }) != None
+        {
+            let path = k.to_string_lossy();
+            trace!("pushing ({}, {})", path, v);
+            candidates.push((path.into(), *v));
         }
     }
     candidates
@@ -86,36 +105,43 @@ pub fn match_consecutive(
 ///
 /// Please see examples in the tests
 pub fn match_fuzzy<'a>(
-    needles: &'a [&str],
-    data: &'a HashMap<String, f32>,
+    needles: &[PathBuf],
+    data: &'a HashMap<PathBuf, f32>,
     ignore_case: bool,
     threshold: Option<f64>,
 ) -> Vec<(String, f32)> {
-    let end_dir = |path: &'a str| -> &'a str {
-        path.split(MAIN_SEPARATOR)
-            .last()
+    let end_dir = |path: &'a Path| -> Cow<'a, str> {
+        path.file_name()
             .expect("expect a non-empty path")
+            .to_string_lossy()
     };
-    let last = needles.last().expect("Expect a non-empty path to search");
-    let match_percent: Box<dyn Fn(&'a str) -> f64> = if ignore_case {
-        Box::new(|path: &'a str| {
+    let last = needles
+        .last()
+        .expect("Expect a non-empty path to search")
+        .to_string_lossy();
+    let match_percent: Box<dyn Fn(&'a Path) -> f64> = if ignore_case {
+        Box::new(|path: &'a Path| {
             let needle = last.to_ascii_lowercase();
-            normalized_levenshtein(needle.as_str(), end_dir(path).to_ascii_lowercase().as_str())
+            normalized_levenshtein(
+                needle.as_str(),
+                end_dir(path).to_ascii_lowercase().as_str(),
+            )
         })
     } else {
-        Box::new(|path: &str| normalized_levenshtein(last, end_dir(path)))
+        Box::new(|path: &'a Path| normalized_levenshtein(last.as_ref(), end_dir(path).as_ref()))
     };
-    let meets_threshold = |path: &'a str| {
+    let meets_threshold = |path: &'a Path| {
         let score = match_percent(path);
-        debug!("fuzzy score {}: {}", path, score);
+        debug!("fuzzy score {}: {}", path.to_string_lossy(), score);
         score >= threshold.unwrap_or(*FUZZY_MATCH_THRESHOLD)
     };
     let mut candidates: Vec<(String, f32)> = Vec::with_capacity(ENTRIES_COUNT);
 
     for (k, v) in data.iter() {
         if meets_threshold(k) {
-            candidates.push((k.clone(), *v));
-            trace!("pushing ({}, {})", k, v);
+            let path = k.to_string_lossy();
+            trace!("pushing ({}, {})", path, v);
+            candidates.push((path.into_owned(), *v));
         }
     }
     candidates
@@ -143,16 +169,23 @@ mod tests {
             (vec!["", "foo", "baz", "bar"], true),
             (vec!["", "foobarbaz"], true),
         ];
-        let data_items: Vec<_> = test_set
-            .iter()
-            .map(|x| (x.0.join(MAIN_SEPARATOR.to_string().as_str()), 10.0f32))
-            .collect();
-        let data = HashMap::from_iter(data_items.iter().cloned());
-        let results = match_anywhere(&needles, &data, true);
+        let data = HashMap::from_iter(test_set.iter().map(|x| (x.0.iter().collect(), 10.0f32)));
+        let results = match_anywhere(
+            &needles.iter().map(|x| PathBuf::from(x)).collect::<Vec<_>>(),
+            &data,
+            true,
+        );
         dbg!(&results);
 
         for v in test_set.iter() {
-            assert_eq!(results.iter().any(|x| x.0 == v.0.join(MAIN_SEPARATOR.to_string().as_str()) && x.1 == 10.0f32), v.1);
+            dbg!(v);
+            assert_eq!(
+                results
+                    .iter()
+                    .any(|x| x.0 == v.0.iter().collect::<PathBuf>().to_string_lossy()
+                        && x.1 == 10.0f32),
+                v.1
+            );
         }
     }
 
@@ -168,16 +201,23 @@ mod tests {
             (vec!["", "foo", "baz", "bar"], false),
             (vec!["", "foobarbaz"], false),
         ];
-        let data_items: Vec<_> = test_set
-            .iter()
-            .map(|x| (x.0.join(MAIN_SEPARATOR.to_string().as_str()), 10.0f32))
-            .collect();
-        let data = HashMap::from_iter(data_items.iter().cloned());
-        let results = match_consecutive(&needles, &data, true);
+        let data = HashMap::from_iter(test_set.iter().map(|x| (x.0.iter().collect(), 10.0f32)));
+        let results = match_consecutive(
+            &needles.iter().map(|x| PathBuf::from(x)).collect::<Vec<_>>(),
+            &data,
+            true,
+        );
         dbg!(&results);
 
         for v in test_set.iter() {
-            assert_eq!(results.iter().any(|x| x.0 == v.0.join(MAIN_SEPARATOR.to_string().as_str()) && x.1 == 10.0f32), v.1);
+            dbg!(v);
+            assert_eq!(
+                results
+                    .iter()
+                    .any(|x| x.0 == v.0.iter().collect::<PathBuf>().to_string_lossy()
+                        && x.1 == 10.0f32),
+                v.1
+            );
         }
     }
 
@@ -190,16 +230,24 @@ mod tests {
             (vec!["", "home", "bar", "baz"], false),
             (vec!["", "ffoof", "bbarb"], false),
         ];
-        let data_items: Vec<_> = test_set
-            .iter()
-            .map(|x| (x.0.join(MAIN_SEPARATOR.to_string().as_str()), 10.0f32))
-            .collect();
-        let data = HashMap::from_iter(data_items.iter().cloned());
-        let results = match_fuzzy(&needles, &data, true, None);
+        let data = HashMap::from_iter(test_set.iter().map(|x| (x.0.iter().collect(), 10.0f32)));
+        let results = match_fuzzy(
+            &needles.iter().map(|x| PathBuf::from(x)).collect::<Vec<_>>(),
+            &data,
+            true,
+            None,
+        );
         dbg!(&results);
 
         for v in test_set.iter() {
-            assert_eq!(results.iter().any(|x| x.0 == v.0.join(MAIN_SEPARATOR.to_string().as_str()) && x.1 == 10.0f32), v.1);
+            dbg!(v);
+            assert_eq!(
+                results
+                    .iter()
+                    .any(|x| x.0 == v.0.iter().collect::<PathBuf>().to_string_lossy()
+                        && x.1 == 10.0f32),
+                v.1
+            );
         }
     }
 }

@@ -86,11 +86,10 @@ impl Config {
 
     pub fn update_from_opts(&mut self, opts: &InstallOpts) -> Result<()> {
         if let Some(Some(install)) = &opts.install {
-            // TODO: does lossy cause issues?
-            if install != self.install_dir.to_string_lossy().as_ref() {
+            if install != &self.install_dir {
                 self.custom_install = true;
+                self.install_dir = install.clone();
             }
-            self.install_dir = PathBuf::from(install);
             // TODO: create it by default?
             if !self.install_dir.exists() {
                 bail!("Destination install directory doesn't exist");

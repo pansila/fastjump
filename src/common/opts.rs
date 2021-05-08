@@ -1,10 +1,23 @@
 use clap::{AppSettings, Clap};
+use std::ffi::OsStr;
+use std::path::PathBuf;
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 const AUTHOR: &str = env!("CARGO_PKG_AUTHORS");
 
 fn toggle_bool(i: u64) -> bool {
     i > 0
+}
+
+// TODO: test
+fn my_from_os_str(path: &OsStr) -> Option<Option<PathBuf>> {
+    if path.is_empty() {
+        return None;
+    }
+    if path == "" {
+        return Some(None);
+    }
+    Some(Some(PathBuf::from(path)))
 }
 
 /// Jump to any directory fast and smart
@@ -15,14 +28,14 @@ pub struct Opts {
     /// The directory to jump to, composed of parts of a path
     // pub paths: Option<Vec<String>>,
     // workaround for zero positional argument
-    #[clap(requires_if("bar", "increase"))]
-    pub paths: Vec<String>,
+    #[clap(requires_if("bar", "increase"), parse(from_os_str))]
+    pub paths: Vec<PathBuf>,
     /// Verbose mode (-v, -vv, -vvv, etc.)
     #[clap(short, long, parse(from_occurrences))]
     pub verbose: u32,
     /// Add a path with a default weight
-    #[clap(short, long, value_name = "path")]
-    pub add: Option<String>,
+    #[clap(short, long, value_name = "path", parse(from_os_str))]
+    pub add: Option<PathBuf>,
     /// Increase the current directory weight
     #[clap(short, long, value_name = "weight")]
     pub increase: Option<f32>,
@@ -39,8 +52,8 @@ pub struct Opts {
     #[clap(short, long, parse(from_occurrences = toggle_bool))]
     pub stat: bool,
     /// Install all necessary files to the user directory
-    #[clap(long)]
-    pub install: Option<Option<String>>,
+    #[clap(long, parse(from_os_str = my_from_os_str))]
+    pub install: Option<Option<PathBuf>>,
     /// Uninstall all necessary files from the user directory
     #[clap(long, parse(from_occurrences = toggle_bool))]
     pub uninstall: bool,
@@ -55,8 +68,8 @@ pub struct Opts {
 #[clap(setting = AppSettings::ColoredHelp)]
 pub struct InstallOpts {
     /// Install all necessary files to the user directory
-    #[clap(short, long, value_name = "directory")]
-    pub install: Option<Option<String>>,
+    #[clap(short, long, value_name = "directory", parse(from_os_str = my_from_os_str))]
+    pub install: Option<Option<PathBuf>>,
     /// Uninstall all necessary files from the user directory
     #[clap(short, long, parse(from_occurrences = toggle_bool))]
     pub uninstall: bool,
