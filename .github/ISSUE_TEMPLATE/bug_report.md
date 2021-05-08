@@ -1,7 +1,7 @@
 ---
 name: Bug report
 about: Create a report to help us improve
-title: example of API mode (out of  line) not working
+title: ''
 labels: bug
 assignees: pansila
 
