@@ -152,6 +152,7 @@ pub fn match_fuzzy<'a>(
 mod tests {
     use super::*;
     use std::iter::FromIterator;
+    use std::collections::HashMap;
 
     #[ctor::ctor]
     fn init() {
@@ -170,7 +171,7 @@ mod tests {
             (vec!["", "foo", "baz", "bar"], true),
             (vec!["", "foobarbaz"], true),
         ];
-        let data = HashMap::from_iter(test_set.iter().map(|x| (x.0.iter().collect(), 10.0f32)));
+        let data = Database::from(HashMap::from_iter(test_set.iter().map(|x| (x.0.iter().collect(), 10.0f32))));
         let results = match_anywhere(
             &needles.iter().map(|x| PathBuf::from(x)).collect::<Vec<_>>(),
             &data,
@@ -183,7 +184,7 @@ mod tests {
             assert_eq!(
                 results
                     .iter()
-                    .any(|x| x.0 == v.0.iter().collect::<PathBuf>().to_string_lossy()
+                    .any(|x| x.0 == v.0.iter().collect::<PathBuf>()
                         && x.1 == 10.0f32),
                 v.1
             );
@@ -202,7 +203,7 @@ mod tests {
             (vec!["", "foo", "baz", "bar"], false),
             (vec!["", "foobarbaz"], false),
         ];
-        let data = HashMap::from_iter(test_set.iter().map(|x| (x.0.iter().collect(), 10.0f32)));
+        let data = Database::from(HashMap::from_iter(test_set.iter().map(|x| (x.0.iter().collect(), 10.0f32))));
         let results = match_consecutive(
             &needles.iter().map(|x| PathBuf::from(x)).collect::<Vec<_>>(),
             &data,
@@ -215,7 +216,7 @@ mod tests {
             assert_eq!(
                 results
                     .iter()
-                    .any(|x| x.0 == v.0.iter().collect::<PathBuf>().to_string_lossy()
+                    .any(|x| x.0 == v.0.iter().collect::<PathBuf>()
                         && x.1 == 10.0f32),
                 v.1
             );
@@ -231,7 +232,7 @@ mod tests {
             (vec!["", "home", "bar", "baz"], false),
             (vec!["", "ffoof", "bbarb"], false),
         ];
-        let data = HashMap::from_iter(test_set.iter().map(|x| (x.0.iter().collect(), 10.0f32)));
+        let data = Database::from(HashMap::from_iter(test_set.iter().map(|x| (x.0.iter().collect(), 10.0f32))));
         let results = match_fuzzy(
             &needles.iter().map(|x| PathBuf::from(x)).collect::<Vec<_>>(),
             &data,
@@ -245,7 +246,7 @@ mod tests {
             assert_eq!(
                 results
                     .iter()
-                    .any(|x| x.0 == v.0.iter().collect::<PathBuf>().to_string_lossy()
+                    .any(|x| x.0 == v.0.iter().collect::<PathBuf>()
                         && x.1 == 10.0f32),
                 v.1
             );

@@ -93,7 +93,7 @@ pub fn handle_print_stats(data: &Database, data_path: &Path) {
 /// Find matched results
 ///
 /// Given a tab entry in the following format return needle, index, and path:
-/// ```
+/// ```text
 ///        [needle]__[index]__[path]
 /// ```
 fn find_results(needles: &[PathBuf], data: &Database, complete: bool) -> Result<()> {

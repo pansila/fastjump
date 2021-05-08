@@ -28,6 +28,12 @@ impl Deref for Database {
     }
 }
 
+impl From<HashMap<PathBuf, f32>> for Database {
+    fn from(data: HashMap<PathBuf, f32>) -> Self {
+        Database {data}
+    }
+}
+
 // TODO: https://github.com/rust-lang/rfcs/issues/814
 // impl<T> Drop for Database<T> {
 //     fn drop(&mut self) {
