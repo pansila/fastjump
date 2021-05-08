@@ -21,12 +21,12 @@ lazy_static! {
 /// not necessarily consecutive) order.
 ///
 /// Please see examples in the tests
-pub fn match_anywhere(
+pub fn match_anywhere<'a>(
     needles: &[PathBuf],
-    data: &HashMap<PathBuf, f32>,
+    data: &'a HashMap<PathBuf, f32>,
     ignore_case: bool,
-) -> Vec<(String, f32)> {
-    let mut candidates: Vec<(String, f32)> = Vec::with_capacity(ENTRIES_COUNT);
+) -> Vec<(Cow<'a, Path>, f32)> {
+    let mut candidates: Vec<(Cow<Path>, f32)> = Vec::with_capacity(ENTRIES_COUNT);
 
     for (k, v) in data.iter() {
         let path = k.to_string_lossy();
@@ -46,9 +46,10 @@ pub fn match_anywhere(
                 }
             }
             Some(())
-        }) != None {
+        }) != None
+        {
             trace!("pushing ({}, {})", path, v);
-            candidates.push((path.into_owned(), *v));
+            candidates.push((Cow::Borrowed(k), *v));
         }
     }
     candidates
@@ -59,12 +60,12 @@ pub fn match_anywhere(
 /// Each needle must be part of one of the components of the path.
 ///
 /// Please see examples in the tests
-pub fn match_consecutive(
+pub fn match_consecutive<'a>(
     needles: &[PathBuf],
-    data: &HashMap<PathBuf, f32>,
+    data: &'a HashMap<PathBuf, f32>,
     ignore_case: bool,
-) -> Vec<(String, f32)> {
-    let mut candidates: Vec<(String, f32)> = Vec::with_capacity(ENTRIES_COUNT);
+) -> Vec<(Cow<'a, Path>, f32)> {
+    let mut candidates: Vec<(Cow<Path>, f32)> = Vec::with_capacity(ENTRIES_COUNT);
 
     for (k, v) in data.iter() {
         let mut comp_iter = k.components().rev();
@@ -80,7 +81,10 @@ pub fn match_consecutive(
                         return None;
                     }
                 } else {
-                    if !comp.to_string_lossy().contains(needle.to_string_lossy().as_ref()) {
+                    if !comp
+                        .to_string_lossy()
+                        .contains(needle.to_string_lossy().as_ref())
+                    {
                         return None;
                     }
                 }
@@ -92,7 +96,7 @@ pub fn match_consecutive(
         {
             let path = k.to_string_lossy();
             trace!("pushing ({}, {})", path, v);
-            candidates.push((path.into(), *v));
+            candidates.push((Cow::Borrowed(k), *v));
         }
     }
     candidates
@@ -109,7 +113,7 @@ pub fn match_fuzzy<'a>(
     data: &'a HashMap<PathBuf, f32>,
     ignore_case: bool,
     threshold: Option<f64>,
-) -> Vec<(String, f32)> {
+) -> Vec<(Cow<'a, Path>, f32)> {
     let end_dir = |path: &'a Path| -> Cow<'a, str> {
         path.file_name()
             .expect("expect a non-empty path")
@@ -122,10 +126,7 @@ pub fn match_fuzzy<'a>(
     let match_percent: Box<dyn Fn(&'a Path) -> f64> = if ignore_case {
         Box::new(|path: &'a Path| {
             let needle = last.to_ascii_lowercase();
-            normalized_levenshtein(
-                needle.as_str(),
-                end_dir(path).to_ascii_lowercase().as_str(),
-            )
+            normalized_levenshtein(needle.as_str(), end_dir(path).to_ascii_lowercase().as_str())
         })
     } else {
         Box::new(|path: &'a Path| normalized_levenshtein(last.as_ref(), end_dir(path).as_ref()))
@@ -135,13 +136,13 @@ pub fn match_fuzzy<'a>(
         debug!("fuzzy score {}: {}", path.to_string_lossy(), score);
         score >= threshold.unwrap_or(*FUZZY_MATCH_THRESHOLD)
     };
-    let mut candidates: Vec<(String, f32)> = Vec::with_capacity(ENTRIES_COUNT);
+    let mut candidates: Vec<(Cow<Path>, f32)> = Vec::with_capacity(ENTRIES_COUNT);
 
     for (k, v) in data.iter() {
         if meets_threshold(k) {
             let path = k.to_string_lossy();
             trace!("pushing ({}, {})", path, v);
-            candidates.push((path.into_owned(), *v));
+            candidates.push((Cow::Borrowed(k), *v));
         }
     }
     candidates

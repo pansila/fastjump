@@ -13,7 +13,7 @@ main() {
     cross test --target $TARGET
     # cross test --target $TARGET --release
 
-    cross run --target $TARGET --bin $CRATE_NAME
+    cross run --target $TARGET --bin $CRATE_NAME -h
     # cross run --target $TARGET --release --bin $CRATE_NAME -h
 }
 
