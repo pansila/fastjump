@@ -104,7 +104,7 @@ pub fn get_app_path() -> PathBuf {
         shellexpand::env("$APPDATA").expect("Can't find the environment variable %APPDATA%");
     #[cfg(target_os = "linux")]
     let data_home =
-        shellexpand::env("XDG_DATA_HOME").unwrap_or(shellexpand::tilde("~/.local/share"));
+        shellexpand::env("$XDG_DATA_HOME").unwrap_or(shellexpand::tilde("~/.local/share"));
     PathBuf::from(data_home.as_ref())
 }
 
@@ -117,7 +117,7 @@ pub fn get_install_path() -> PathBuf {
     let install_dir = shellexpand::env(concatcp!("$LOCALAPPDATA\\", PKGNAME))
         .expect("Can't find the environment variable %LOCALAPPDATA%");
     #[cfg(target_family = "unix")]
-    let install_dir = shellexpand::tilde(concatcp!("~/", PKGNAME));
+    let install_dir = shellexpand::tilde(concatcp!("~/.", PKGNAME));
     PathBuf::from(install_dir.as_ref())
 }
 

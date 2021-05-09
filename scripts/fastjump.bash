@@ -44,14 +44,16 @@ fastjump_add_to_database() {
 }
 
 while IFS= read -r line; do
-    if [[ $line ~= 'cd ']]; then
+    IFS=' '
+    read -ra fields <<<$line
+    if [[ ${fields[1]} =~ ^cd$ ]]; then
         if [[ -f "${FASTJUMP_ERROR_PATH}" ]]; then
-            (fastjump --add "$(line:3)" >/dev/null 2>>${FASTJUMP_ERROR_PATH} &) &>/dev/null
+            (fastjump --add ${fields[2]} >/dev/null 2>>${FASTJUMP_ERROR_PATH} &) &>/dev/null
         else
-            (fastjump --add "$(line:3)" >/dev/null &) &>/dev/null
+            (fastjump --add ${fields[2]} >/dev/null &) &>/dev/null
         fi
     fi
-done <<< $(history)
+done <<< "$(history)"
 
 case $PROMPT_COMMAND in
     *fastjump*)

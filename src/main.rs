@@ -1,5 +1,5 @@
 use anyhow::Result;
-use clap::Clap;
+use structopt::StructOpt;
 use fastjump::common::config::Config;
 use fastjump::common::opts::Opts;
 use fastjump::common::utils::{setup_logger, CWD};
@@ -10,15 +10,17 @@ use fastjump::handlers::{
     handle_tab_completion,
 };
 
-// TODO: compare a string and a path, not to coerce path to string, do it conversely to keep from info loss
 // TODO: cleanup - remove unwrap
 // TODO: cleanup - remove panicable calls, eg. expect, toss up as a result
-// TODO: cleanup - cargo.lock
+// TODO: cleanup - unnecessary features
+// TODO: add env versions collection
+// TODO: j <empty> go to the most recently dir
+// TODO: expand to abs path for add
 
 fn main() -> Result<()> {
     // environment_check()?;
 
-    let opts = Opts::parse();
+    let opts = Opts::from_args();
     setup_logger(&opts);
 
     let config = Config::new();
@@ -49,6 +51,7 @@ fn main() -> Result<()> {
     } else if opts.stat {
         handle_print_stats(&data, config.data_path.as_path());
     } else {
+        // TODO: move to the top
         handle_jump(&opts.paths.iter().map(|x| x.as_path()).collect::<Vec<_>>(), &data)?;
     }
     Ok(())

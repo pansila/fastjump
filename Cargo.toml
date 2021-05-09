@@ -1,10 +1,10 @@
 [package]
 name = "fastjump"
-version = "0.1.2"
+version = "0.1.3"
 authors = ["Lin Zhou <pansila@163.com>"]
 edition = "2018"
 repository = "https://github.com/pansila/fastjump"
-license = "GPL-3.0"
+license = "MIT"
 keywords = ["bash", "click"]
 categories = ["command-line-utilities"]
 readme = "README.md"
@@ -18,15 +18,16 @@ path = "src/bin/install.rs"
 [dependencies]
 anyhow = "^1.0.40"
 bincode = "^1.3.3"
-clap = "^3.0.0-beta.2"
 const_format = "^0.2.14"
-env_logger = {version = "^0.8.3", features = ["termcolor", "atty", "humantime"]}
+env_logger = {version = "^0.8.3", default-features = false, features = ["termcolor", "atty"]}
 lazy_static = "^1.4.0"
 log = "^0.4.14"
 serde = {version = "^1.0.125", features = ["derive"]}
 shellexpand = "^2.1.0"
 strsim = "^0.10.0"
+structopt = "^0.3.21"
 tempfile = "^3.2.0"
 
 [dev-dependencies]
 ctor = "^0.1.20"
+env_logger = {version = "^0.8.3", default-features = false, features = ["atty", "humantime"]}

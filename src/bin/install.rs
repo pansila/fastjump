@@ -1,10 +1,10 @@
 use anyhow::{anyhow, bail, Result};
-use clap::Clap;
 use const_format::concatcp;
 use fastjump::common::opts::InstallOpts;
 use fastjump::common::utils::{get_app_path, get_install_path, into_level};
 use fastjump::{copy_in, format_path};
 use log::{debug, info};
+use structopt::StructOpt;
 #[cfg(target_family = "windows")]
 use std::fs::read;
 use std::fs::{create_dir_all, remove_dir_all, remove_file, OpenOptions};
@@ -85,9 +85,9 @@ impl Config {
 
     pub fn update_from_opts(&mut self, opts: &InstallOpts) -> Result<()> {
         if let Some(Some(install)) = &opts.install {
-            if install != &self.install_dir {
+            if Path::new(install) != &self.install_dir {
                 self.custom_install = true;
-                self.install_dir = install.clone();
+                self.install_dir = PathBuf::from(install);
             }
             // TODO: create it by default?
             if !self.install_dir.exists() {
@@ -356,11 +356,6 @@ fn handle_install(config: &Config, opts: &InstallOpts) -> Result<()> {
             opts.dryrun,
         )?;
         copy_in_dryrun(
-            format_path!("scripts", "fastjump.bat").as_path(),
-            &config.bin_dir,
-            opts.dryrun,
-        )?;
-        copy_in_dryrun(
             format_path!("scripts", "j.bat").as_path(),
             &config.bin_dir,
             opts.dryrun,
@@ -492,7 +487,7 @@ fn remove_system_installation(config: &mut Config, dryrun: bool) -> Result<()> {
     config.prefix = "/usr/local".to_string();
     config.update();
 
-    if !config.bin_dir.exists() {
+    if !config.bin_dir.join(PKGNAME).exists() {
         return Ok(());
     }
 
@@ -560,7 +555,7 @@ fn handle_uninstall(config: &mut Config, opts: &InstallOpts) -> Result<()> {
 }
 
 fn main() -> Result<()> {
-    let opts = InstallOpts::parse();
+    let opts = InstallOpts::from_args();
 
     let mut builder = env_logger::builder();
     #[cfg(not(debug_assertions))]
@@ -578,6 +573,9 @@ fn main() -> Result<()> {
         handle_install(&config, &opts)?;
     } else if opts.uninstall {
         handle_uninstall(&mut config, &opts)?;
+    } else {
+        // TODO
+        // opts.print_help();
     }
 
     Ok(())
