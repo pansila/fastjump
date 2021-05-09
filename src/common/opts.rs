@@ -11,10 +11,8 @@ fn toggle_bool(i: u64) -> bool {
 
 // TODO: test
 fn my_from_os_str(path: &OsStr) -> Option<Option<PathBuf>> {
+    dbg!(path);
     if path.is_empty() {
-        return None;
-    }
-    if path == "" {
         return Some(None);
     }
     Some(Some(PathBuf::from(path)))
@@ -51,12 +49,6 @@ pub struct Opts {
     /// Show database entries and their weights
     #[clap(short, long, parse(from_occurrences = toggle_bool))]
     pub stat: bool,
-    /// Install all necessary files to the user directory
-    #[clap(long, parse(from_os_str = my_from_os_str))]
-    pub install: Option<Option<PathBuf>>,
-    /// Uninstall all necessary files from the user directory
-    #[clap(long, parse(from_occurrences = toggle_bool))]
-    pub uninstall: bool,
     /// Dry run
     #[clap(long, parse(from_occurrences = toggle_bool))]
     pub dryrun: bool,
@@ -77,14 +69,15 @@ pub struct InstallOpts {
     #[clap(long, parse(from_occurrences = toggle_bool))]
     pub purge: bool,
     /// The prefix of the directory to install
+    // TODO: String -> PathBuf
     #[clap(long, value_name = "directory")]
-    pub prefix: Option<Option<String>>,
+    pub prefix: Option<String>,
     /// Set zsh share destination
-    #[clap(long, value_name = "directory")]
-    pub zshshare: Option<Option<String>>,
+    #[clap(long, value_name = "directory", parse(from_os_str))]
+    pub zshshare: Option<PathBuf>,
     /// Set clink directory location (Windows only)
-    #[clap(long, value_name = "directory")]
-    pub clinkdir: Option<Option<String>>,
+    #[clap(long, value_name = "directory", parse(from_os_str))]
+    pub clinkdir: Option<PathBuf>,
     /// Dry run
     #[clap(short, long, parse(from_occurrences = toggle_bool))]
     pub dryrun: bool,

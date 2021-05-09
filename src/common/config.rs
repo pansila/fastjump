@@ -1,7 +1,6 @@
-use std::path::PathBuf;
 use crate::common::utils::get_app_path;
 use const_format::concatcp;
-
+use std::path::PathBuf;
 
 const PKGNAME: &str = env!("CARGO_PKG_NAME");
 
@@ -18,7 +17,7 @@ impl Config {
 
         Config {
             data_path: data_home.join(data_path),
-            backup_path: data_home.join(backup_path)
+            backup_path: data_home.join(backup_path),
         }
     }
 }

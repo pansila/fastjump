@@ -52,7 +52,6 @@ impl Config {
             config.clink_dir = parent.join("clink");
 
             if !config.clink_dir.exists() {
-                // TODO: Is clink essential to work?
                 panic!(
                     "clink has not been installed, expecting at {}",
                     config.clink_dir.display()
@@ -95,7 +94,7 @@ impl Config {
                 bail!("Destination install directory doesn't exist");
             }
         }
-        if let Some(Some(prefix)) = &opts.prefix {
+        if let Some(prefix) = &opts.prefix {
             if prefix != &self.prefix {
                 self.custom_install = true;
             }
@@ -110,19 +109,23 @@ impl Config {
 
         self.update();
 
+        // TODO: normalize path
         #[cfg(target_family = "windows")]
-        if let Some(Some(clinkdir)) = &opts.clinkdir {
-            self.clink_dir = PathBuf::from(clinkdir);
+        if let Some(clinkdir) = &opts.clinkdir {
+            if clinkdir != &self.clink_dir {
+                self.custom_install = true;
+            }
+            self.clink_dir = clinkdir.clone();
             if !self.clink_dir.exists() {
                 bail!("Specified clink directory doesn't exist");
             }
         }
         #[cfg(target_family = "unix")]
-        if let Some(Some(zshshare)) = &opts.zshshare {
-            if zshshare != self.zshshare_dir.to_string_lossy().as_ref() {
+        if let Some(zshshare) = &opts.zshshare {
+            if zshshare != &self.zshshare_dir {
                 self.custom_install = true;
             }
-            self.zshshare_dir = PathBuf::from(zshshare);
+            self.zshshare_dir = zshshare.clone();
             if !self.zshshare_dir.exists() {
                 bail!("Specified zshshare directory doesn't exist");
             }
@@ -164,16 +167,12 @@ fn is_empty_dir(path: &Path) -> Result<bool> {
 
 #[cfg(target_family = "unix")]
 fn get_shell() -> String {
-    Path::new(
-        shellexpand::env("$SHELL")
-            .unwrap_or(Cow::Borrowed(""))
-            .as_ref(),
-    )
-    .file_name()
-    .unwrap_or(OsStr::new(""))
-    .to_str()
-    .unwrap_or("")
-    .to_string()
+    Path::new(shellexpand::env("$SHELL").unwrap_or(Cow::from("")).as_ref())
+        .file_name()
+        .unwrap_or(OsStr::new(""))
+        .to_str()
+        .unwrap_or("")
+        .to_string()
 }
 
 fn check_opts(opts: &InstallOpts) -> Result<()> {

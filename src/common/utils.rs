@@ -1,5 +1,7 @@
-use crate::common::r#match::{match_anywhere, match_consecutive, match_fuzzy};
 use crate::common::opts::Opts;
+use crate::common::r#match::{
+    match_anywhere, match_consecutive, match_fuzzy,
+};
 use crate::database::Database;
 #[cfg(target_family = "unix")]
 use anyhow::bail;
@@ -8,16 +10,15 @@ use const_format::concatcp;
 use lazy_static::lazy_static;
 use log::LevelFilter;
 use log::{debug, info};
-use std::borrow::Cow;
 use std::cmp::Ordering;
 use std::fmt::Display;
 use std::iter::Iterator;
-use std::path::{Component, Path, PathBuf};
+use std::path::{Component, Path, PathBuf, Prefix};
 
 const PKGNAME: &str = env!("CARGO_PKG_NAME");
 
 lazy_static! {
-    static ref CWD: PathBuf = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("./"));
+    pub static ref CWD: PathBuf = std::env::current_dir().expect("Can't find the current directory");
 }
 
 /// Copy a file in a directory.
@@ -122,32 +123,23 @@ pub fn get_install_path() -> PathBuf {
 
 /// normalizatize and convert the lowercase drive name to an uppercase one on Windows
 pub fn normalize_path(path: &Path) -> PathBuf {
-    path.components()
-        .map(|x| {
-            if let Component::Prefix(prefix) = x {
-                // TODO
-                #[cfg(feature = "osstring_ascii")]
-                {
-                    let p = prefix.as_os_str().to_os_string();
-                    p.make_ascii_uppercase();
-                    p
-                }
-                #[cfg(not(feature = "osstring_ascii"))]
-                {
-                    prefix.as_os_str().to_string_lossy().to_ascii_uppercase()
-                }
-            } else {
-                #[cfg(feature = "osstring_ascii")]
-                {
-                    x.as_os_str().to_os_string()
-                }
-                #[cfg(not(feature = "osstring_ascii"))]
-                {
-                    x.as_os_str().to_string_lossy().into_owned()
-                }
+    if let Some(Component::Prefix(prefix)) = path.components().next() {
+        if let Prefix::Disk(drive) = prefix.kind() {
+            if drive >= b'a' && drive <= b'z' {
+                return path
+                    .components()
+                    .map(|x| {
+                        if let Component::Prefix(prefix) = x {
+                            prefix.as_os_str().to_string_lossy().to_ascii_uppercase()
+                        } else {
+                            x.as_os_str().to_string_lossy().into_owned()
+                        }
+                    })
+                    .collect();
             }
-        })
-        .collect()
+        }
+    }
+    path.components().collect()
 }
 
 pub fn print_item<T: Display>((path, weight): (T, f32)) {
@@ -162,7 +154,7 @@ pub fn print_item<T: Display>((path, weight): (T, f32)) {
 /// on subsequent calls.
 pub fn print_tab_menu<'a>(
     needle: &'a str,
-    tab_entries: impl Iterator<Item = &'a (Cow<'a, Path>, f32)>,
+    tab_entries: impl Iterator<Item = &'a (&'a Path, f32)>,
     separator: &str,
 ) {
     for (i, entry) in tab_entries.enumerate() {
@@ -181,13 +173,10 @@ pub fn print_tab_menu<'a>(
 
 /// If any needles contain an uppercase letter then use case sensitive
 /// searching. Otherwise use case insensitive searching.
-fn detect_smartcase(needles: &[PathBuf]) -> bool {
-    needles.iter().any(|s| {
-        s.to_string_lossy()
-            .as_ref()
-            .chars()
-            .any(|c| c.is_ascii_uppercase())
-    })
+fn detect_smartcase(needles: &[&Path]) -> bool {
+    needles
+        .iter()
+        .any(|s| s.to_string_lossy().chars().any(|c| c.is_ascii_uppercase()))
 }
 
 /// Return a vec containing matched result.
@@ -197,20 +186,19 @@ fn detect_smartcase(needles: &[PathBuf]) -> bool {
 /// 2. if needles is empty
 pub fn find_matches<'a>(
     data: &'a Database,
-    needles: &[PathBuf],
+    needles: &[&Path],
     check_existence: bool,
-) -> Vec<(Cow<'a, Path>, f32)> {
+) -> Vec<(&'a Path, f32)> {
+    if needles.len() == 0 {
+        return vec!((Path::new("."), 0.0));
+    }
     if let Some(needle) = needles.get(0) {
         if needle.as_os_str().is_empty() {
-            let mut candidates: Vec<(Cow<Path>, f32)> = Vec::with_capacity(1);
-            candidates.push((Cow::Borrowed(Path::new(".")), 0.0));
-            return candidates;
+            return vec!((Path::new("."), 0.0));
         }
     }
 
     let ignore_case = !detect_smartcase(needles);
-    let cwd = std::env::current_dir().expect("Can't find the current directory");
-    let is_cwd = |path: &Path| path == cwd;
 
     let path_exists = if check_existence {
         |path: &Path| path.exists()
@@ -218,7 +206,7 @@ pub fn find_matches<'a>(
         |_: &Path| true
     };
 
-    let sort = |a: &(Cow<'a, Path>, f32), b: &(Cow<'a, Path>, f32)| {
+    let sort = |a: &(&'a Path, f32), b: &(&'a Path, f32)| {
         let weight =
             b.1.partial_cmp(&a.1)
                 .expect("can't compare the two float numbers");
@@ -241,16 +229,16 @@ pub fn find_matches<'a>(
     debug!("match fuzzy: {:?}", match_2);
     debug!("match anywhere: {:?}", match_3);
 
-    let mut ret: Vec<(Cow<'a, Path>, f32)> = match_1
+    let mut ret: Vec<(&'a Path, f32)> = match_1
         .into_iter()
         .chain(match_2.into_iter())
         .chain(match_3.into_iter())
-        .filter(|(path, _)| !is_cwd(path) && path_exists(path))
+        .filter(|(path, _)| *path != *CWD && path_exists(path))
         .collect();
     debug!("=> match results: {:?}", ret);
 
     if ret.len() == 0 {
-        ret.push((Cow::Borrowed(Path::new(".")), 0.0));
+        ret.push((Path::new("."), 0.0));
     }
     ret
 }

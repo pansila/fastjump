@@ -1,10 +1,10 @@
-use crate::common::utils::{find_matches, normalize_path, print_item, print_tab_menu};
 use crate::common::config::Config;
+use crate::common::utils::{find_matches, normalize_path, print_item, print_tab_menu, CWD};
 use crate::database::Database;
-use anyhow::{bail, Context, Result};
+use anyhow::{bail, Result};
 use log::info;
-use std::path::{Path, PathBuf};
 use std::cmp::Ordering;
+use std::path::Path;
 
 const TAB_ENTRIES_COUNT: usize = 9;
 const TAB_SEPARATOR: &str = "__";
@@ -79,12 +79,10 @@ pub fn handle_print_stats(data: &Database, data_path: &Path) {
         width = (sum.log10().floor() as usize) + 4
     );
 
-    if let Ok(cwd) = std::env::current_dir() {
-        info!(
-            "{:.2}\t\tcurrent directory weight",
-            data.get(&normalize_path(&cwd)).unwrap_or(&0.0)
-        );
-    }
+    info!(
+        "{:.2}\t\tcurrent directory weight",
+        data.get(&normalize_path(&CWD)).unwrap_or(&0.0)
+    );
 
     info!("");
     info!("database file:\t{}", data_path.to_str().unwrap()); // never fail
@@ -96,12 +94,13 @@ pub fn handle_print_stats(data: &Database, data_path: &Path) {
 /// ```text
 ///        [needle]__[index]__[path]
 /// ```
-fn find_results(needles: &[PathBuf], data: &Database, complete: bool) -> Result<()> {
+fn find_results(needles: &[&Path], data: &Database, complete: bool) -> Result<()> {
     // TODO: invalidate instead of normalize?
     let needles: Vec<_> = needles.iter().map(|x| normalize_path(x)).collect();
+    let needles: Vec<_> = needles.iter().map(|x| x.as_path()).collect();
     let first_needle = needles
         .get(0)
-        .context("needles are empty")?
+        .unwrap_or(&Path::new(""))
         .to_string_lossy();
     let mut tabs = first_needle.split(TAB_SEPARATOR);
     let tab_needle = tabs.next();
@@ -114,7 +113,7 @@ fn find_results(needles: &[PathBuf], data: &Database, complete: bool) -> Result<
         let index = _index.parse().unwrap_or(0);
         println!(
             "{}",
-            find_matches(data, &[PathBuf::from(tab_needle.unwrap())], false) // never fail
+            find_matches(data, &[Path::new(tab_needle.unwrap())], false) // never fail
                 .get(index)
                 .unwrap() // never fail
                 .0
@@ -143,12 +142,12 @@ fn find_results(needles: &[PathBuf], data: &Database, complete: bool) -> Result<
 }
 
 /// Provide tab completion hints
-pub fn handle_tab_completion(needles: &[PathBuf], data: &Database) -> Result<()> {
+pub fn handle_tab_completion(needles: &[&Path], data: &Database) -> Result<()> {
     find_results(needles, data, true)
 }
 
 /// Provide the result path best matched
-pub fn handle_jump(needles: &[PathBuf], data: &Database) -> Result<()> {
+pub fn handle_jump(needles: &[&Path], data: &Database) -> Result<()> {
     find_results(needles, data, false)
 }
 
