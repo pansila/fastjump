@@ -75,7 +75,7 @@ impl Config {
             .install_dir
             .join(&self.prefix)
             .join("share")
-            .join("fastjump");
+            .join(PKGNAME);
 
         #[cfg(target_family = "unix")]
         {
@@ -262,7 +262,8 @@ fn modify_bin_lua(clink_dir: &Path, bin_dir: &Path, dryrun: bool) -> Result<()> 
     }
 
     let custom_install = format!(
-        "local FASTJUMP_BIN_DIR = \"{}\"\n",
+        "local {}_BIN_DIR = \"{}\"\n",
+        PKGNAME.to_ascii_uppercase(),
         bin_dir.display().to_string().replace("\\", "\\\\"),
     );
 
@@ -294,7 +295,7 @@ fn modify_bin_sh(etc_dir: &Path, share_dir: &Path, dryrun: bool) -> Result<()> {
         PKGNAME
     );
 
-    let etc_file = etc_dir.join("fastjump.sh");
+    let etc_file = etc_dir.join(concatcp!(PKGNAME, ".sh"));
     let mut file = OpenOptions::new().write(true).open(etc_file)?;
     file.write(custom_install.as_bytes())?;
 
@@ -326,24 +327,46 @@ fn handle_install(config: &Config, opts: &InstallOpts) -> Result<()> {
     }
 
     #[cfg(target_family = "unix")]
-    copy_in_dryrun(
-        format_path!("target", "release", "fastjump").as_path(),
-        &config.bin_dir,
-        opts.dryrun,
-    )?;
+    {
+        let target_dirs = [
+            format_path!("target", "release", PKGNAME),
+            format_path!("target", "debug", PKGNAME),
+        ];
+        for target in &target_dirs {
+            if target.exists() {
+                copy_in_dryrun(
+                    target.as_path(),
+                    &config.bin_dir,
+                    opts.dryrun,
+                )?;
+                break;
+            }
+        }
+    }
     #[cfg(target_family = "windows")]
-    copy_in_dryrun(
-        format_path!("target", "release", "fastjump.exe").as_path(),
-        &config.bin_dir,
-        opts.dryrun,
-    )?;
+    {
+        let target_dirs = [
+            format_path!("target", "release", concatcp!(PKGNAME, ".exe")),
+            format_path!("target", "debug", concatcp!(PKGNAME, ".exe")),
+        ];
+        for target in &target_dirs {
+            if target.exists() {
+                copy_in_dryrun(
+                    target.as_path(),
+                    &config.bin_dir,
+                    opts.dryrun,
+                )?;
+                break;
+            }
+        }
+    }
     copy_in_dryrun(
         format_path!("assets", "icon.png").as_path(),
         &config.share_dir,
         opts.dryrun,
     )?;
     copy_in_dryrun(
-        format_path!("doc", "fastjump.1").as_path(),
+        format_path!("doc", concatcp!(PKGNAME, ".1")).as_path(),
         &config.doc_dir,
         opts.dryrun,
     )?;
@@ -351,7 +374,7 @@ fn handle_install(config: &Config, opts: &InstallOpts) -> Result<()> {
     #[cfg(target_family = "windows")]
     {
         copy_in_dryrun(
-            format_path!("scripts", "fastjump.lua").as_path(),
+            format_path!("scripts", concatcp!(PKGNAME, ".lua")).as_path(),
             &config.clink_dir,
             opts.dryrun,
         )?;
@@ -383,22 +406,22 @@ fn handle_install(config: &Config, opts: &InstallOpts) -> Result<()> {
     #[cfg(target_family = "unix")]
     {
         copy_in_dryrun(
-            format_path!("scripts", "fastjump.sh").as_path(),
+            format_path!("scripts", concatcp!(PKGNAME, ".sh")).as_path(),
             &config.etc_dir,
             opts.dryrun,
         )?;
         copy_in_dryrun(
-            format_path!("scripts", "fastjump.bash").as_path(),
+            format_path!("scripts", concatcp!(PKGNAME, ".bash")).as_path(),
             &config.share_dir,
             opts.dryrun,
         )?;
         copy_in_dryrun(
-            format_path!("scripts", "fastjump.fish").as_path(),
+            format_path!("scripts", concatcp!(PKGNAME, ".fish")).as_path(),
             &config.share_dir,
             opts.dryrun,
         )?;
         copy_in_dryrun(
-            format_path!("scripts", "fastjump.zsh").as_path(),
+            format_path!("scripts", concatcp!(PKGNAME, ".zsh")).as_path(),
             &config.share_dir,
             opts.dryrun,
         )?;
