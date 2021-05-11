@@ -1,5 +1,6 @@
 #!/bin/bash
 # set -x
+echo $1
 source $1
 
 j -h

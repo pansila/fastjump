@@ -33,14 +33,15 @@ install:
   - set PATH=%PATH%;C:\Users\appveyor\.cargo\bin
   - rustc -Vv
   - cargo -V
+  - ps: ci\install.ps1
 
 test_script:
   - if [%APPVEYOR_REPO_TAG%]==[false] (
       cargo build --target %TARGET% &&
       cargo test --target %TARGET% &&
       cargo run --target %TARGET% --bin %CRATE_NAME%
+      ci\script.bat
     )
-  - ps: ci\script.ps1
 
 before_deploy:
   - cargo rustc --target %TARGET% --release --bin %CRATE_NAME% -- -C lto

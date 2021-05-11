@@ -1,25 +1,18 @@
 
-test_linux() {
-    sudo -h >/dev/null 2>&1
 
-    if [ $? -eq 0 ]; then
-        sudo apt-get install -y bash >/dev/null
-    else
-        apt-get install -y bash >/dev/null
-    fi
-
-    if [ $? -ne 0 ]; then
-        >&2 echo "Failed to install bash"
-        exit 1
-    fi
+common_install() {
+  curl -O https://github.com/nushell/nushell/releases/download/0.30.0/nu_0_30_0_linux.tar.gz
+  tar -xf nu_0_30_0_linux.tar.gz
 }
 
-test_macos() {
-    echo 111
+install_for_linux() {
+}
+
+install_for_macos() {
 }
 
 if [ $TRAVIS_OS_NAME = linux ]; then
-    test_linux
+    install_for_linux
 else
-    test_macos
+    install_for_macos
 fi

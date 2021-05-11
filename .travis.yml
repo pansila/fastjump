@@ -81,6 +81,16 @@ before_install:
   - set -e
   - rustup self update
   - sh ci/before_install.sh
+addons:
+  apt:
+    packages:
+    - bash
+    - zsh
+    - fish
+    - tcsh
+  homebrew:
+    packages:
+    - beanstalk
 
 install:
   - sh ci/install.sh
