@@ -1,7 +1,5 @@
 use crate::common::opts::Opts;
-use crate::common::r#match::{
-    match_anywhere, match_consecutive, match_fuzzy,
-};
+use crate::common::r#match::{match_anywhere, match_consecutive, match_fuzzy};
 use crate::database::Database;
 #[cfg(target_family = "unix")]
 use anyhow::bail;
@@ -10,6 +8,7 @@ use const_format::concatcp;
 use lazy_static::lazy_static;
 use log::LevelFilter;
 use log::{debug, info};
+use path_clean::PathClean;
 use std::cmp::Ordering;
 use std::fmt::Display;
 use std::iter::Iterator;
@@ -18,7 +17,8 @@ use std::path::{Component, Path, PathBuf, Prefix};
 const PKGNAME: &str = env!("CARGO_PKG_NAME");
 
 lazy_static! {
-    pub static ref CWD: PathBuf = std::env::current_dir().expect("Can't find the current directory");
+    pub static ref CWD: PathBuf =
+        std::env::current_dir().expect("Can't find the current directory");
 }
 
 /// Copy a file in a directory.
@@ -142,6 +142,19 @@ pub fn normalize_path(path: &Path) -> PathBuf {
     path.components().collect()
 }
 
+pub fn absolute_path(path: impl AsRef<Path>) -> PathBuf {
+    let path = path.as_ref();
+
+    let absolute_path = if path.is_absolute() {
+        path.to_path_buf()
+    } else {
+        (*CWD).join(path)
+    }
+    .clean();
+
+    absolute_path
+}
+
 pub fn print_item<T: Display>((path, weight): (T, f32)) {
     info!("{:.2}\t\t{}", weight, path);
 }
@@ -190,11 +203,11 @@ pub fn find_matches<'a>(
     check_existence: bool,
 ) -> Vec<(&'a Path, f32)> {
     if needles.len() == 0 {
-        return vec!((Path::new("."), 0.0));
+        return vec![(Path::new("."), 0.0)];
     }
     if let Some(needle) = needles.get(0) {
         if needle.as_os_str().is_empty() {
-            return vec!((Path::new("."), 0.0));
+            return vec![(Path::new("."), 0.0)];
         }
     }
 

@@ -1,5 +1,5 @@
-use structopt::StructOpt;
 use std::path::PathBuf;
+use structopt::StructOpt;
 // use std::ffi::OsStr;
 
 // fn my_from_os_str(path: &OsStr) -> Option<Option<PathBuf>> {

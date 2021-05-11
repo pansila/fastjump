@@ -2,11 +2,13 @@ use crate::database::Database;
 use lazy_static::lazy_static;
 use log::{debug, trace};
 use std::borrow::Cow;
-use std::path::{Component, Path};
+use std::path::{Path, MAIN_SEPARATOR};
 use strsim::normalized_levenshtein;
 
 const ENTRIES_COUNT: usize = 9; // TODO
 const PKGNAME: &str = env!("CARGO_PKG_NAME");
+
+// TODO: type Items<'a> = Vec<(&'a Path, f32)>;
 
 lazy_static! {
     static ref FUZZY_MATCH_THRESHOLD: f64 =
@@ -91,24 +93,22 @@ pub fn match_consecutive<'a>(
     let mut candidates: Vec<(&'a Path, f32)> = Vec::with_capacity(ENTRIES_COUNT);
 
     for (k, v) in data.iter() {
-        let mut comp_iter = k.components().rev();
+        // we don't use components as the path has been normalized
+        let path = k.to_string_lossy();
+        let mut part_iter = path.split(MAIN_SEPARATOR).rev();
         if needles.iter().rev().try_fold((), |_, needle| {
-            // TODO: curdir and rootdir?
-            if let Some(Component::Normal(comp)) = comp_iter.next() {
+            if let Some(part) = part_iter.next() {
                 if ignore_case {
-                    let mut comp = comp.to_string_lossy();
-                    comp.make_ascii_lowercase_cow();
+                    let mut part = Cow::from(part);
+                    part.make_ascii_lowercase_cow();
                     let mut needle = needle.to_string_lossy();
                     needle.make_ascii_lowercase_cow();
 
-                    if !comp.contains(needle.as_ref()) {
+                    if !part.contains(needle.as_ref()) {
                         return None;
                     }
                 } else {
-                    if !comp
-                        .to_string_lossy()
-                        .contains(needle.to_string_lossy().as_ref())
-                    {
+                    if !part.contains(needle.to_string_lossy().as_ref()) {
                         return None;
                     }
                 }

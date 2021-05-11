@@ -1,16 +1,18 @@
-use anyhow::{anyhow, bail, Result};
+use anyhow::{Result, anyhow, bail};
 use const_format::concatcp;
 use fastjump::common::opts::InstallOpts;
 use fastjump::common::utils::{get_app_path, get_install_path, into_level};
 use fastjump::{copy_in, format_path};
-use log::{debug, info};
-use structopt::StructOpt;
+use log::{debug, info, warn};
 #[cfg(target_family = "windows")]
 use std::fs::read;
-use std::fs::{create_dir_all, remove_dir_all, remove_file, OpenOptions};
+#[cfg(target_family = "unix")]
+use std::fs::read_to_string;
+use std::{fs::{OpenOptions, copy, create_dir_all, remove_dir_all, remove_file}, io::LineWriter};
 use std::io::ErrorKind;
 use std::io::Write;
 use std::path::{Path, PathBuf};
+use structopt::StructOpt;
 #[cfg(target_family = "unix")]
 use {std::borrow::Cow, std::ffi::OsStr};
 
@@ -218,7 +220,28 @@ fn create_dir_dryrun(dir: &Path, dryrun: bool) -> Result<()> {
     Ok(())
 }
 
-fn show_post_installation_message(_etc_dir: &Path, _share_dir: &Path, _bin_dir: &Path) {
+#[cfg(target_family = "unix")]
+fn get_rc_file(etc_dir: &Path, share_dir: &Path) -> (String, String) {
+    let rcfile;
+    let source_msg;
+    if get_shell() == "fish" {
+        let aj_shell = format!("{}/{}.fish", share_dir.display(), PKGNAME);
+        source_msg = format!("if test -f {}; . {}; end", aj_shell, aj_shell);
+        rcfile = "~/.config/fish/config.fish".to_string();
+    } else {
+        let aj_shell = format!("{}/{}.sh", etc_dir.display(), PKGNAME);
+        source_msg = format!("[[ -s {} ]] && source {}", aj_shell, aj_shell);
+
+        if cfg!(target_os = "macos") && get_shell() == "bash" {
+            rcfile = "~/.profile".to_string();
+        } else {
+            rcfile = format!("~/.{}rc", get_shell());
+        }
+    }
+    (rcfile, source_msg)
+}
+
+fn post_install(_etc_dir: &Path, _share_dir: &Path, _bin_dir: &Path, dryrun: bool) -> Result<()> {
     #[cfg(target_family = "windows")]
     println!(
         "\nPlease manually add {} to your user 'PATH'",
@@ -226,31 +249,54 @@ fn show_post_installation_message(_etc_dir: &Path, _share_dir: &Path, _bin_dir: 
     );
     #[cfg(target_family = "unix")]
     {
-        let rcfile;
-        let source_msg;
-        if get_shell() == "fish" {
-            let aj_shell = format!("{}/{}.fish", _share_dir.display(), PKGNAME);
-            source_msg = format!("if test -f {}; . {}; end", aj_shell, aj_shell);
-            rcfile = "~/.config/fish/config.fish".to_string();
-        } else {
-            let aj_shell = format!("{}/{}.sh", _etc_dir.display(), PKGNAME);
-            source_msg = format!("[[ -s {} ]] && source {}", aj_shell, aj_shell);
+        let (rcfile, source_msg) = get_rc_file(_etc_dir, _share_dir);
 
-            if cfg!(target_os = "macos") && get_shell() == "bash" {
-                rcfile = "~/.profile".to_string();
-            } else {
-                rcfile = format!("~/.{}rc", get_shell());
-            }
-        }
-
-        println!("\nPlease manually add the following line(s) to {}:", rcfile);
-        println!("\n\t{}", source_msg);
         if get_shell() == "zsh" {
             println!("\n\tautoload -U compinit && compinit -u");
         }
+
+        info!("Add {} to the rcfile {}", PKGNAME, rcfile);
+        if let Err(e) = modify_bin_rcfile(&rcfile, &source_msg, dryrun, true) {
+            debug!("{}", e);
+            warn!("Failed to add {} to {}", PKGNAME, rcfile);
+            info!("Please manually add the following line(s) to {}:", rcfile);
+            info!("{}", source_msg);
+        }
+        info!("");
+        info!("Please restart terminal(s) to take effect.");
+        info!("");
+        info!("If you want to try '{}' in the current shell, please run the following line manually.", PKGNAME);
+        info!("source {}", source_msg.split_whitespace().last().unwrap_or("Error: no source file found"));
     }
 
-    println!("\nPlease restart terminal(s) before running {}.\n", PKGNAME);
+    Ok(())
+}
+
+#[cfg(target_family = "unix")]
+fn modify_bin_rcfile(rcfile: &str, source_msg: &str, dryrun: bool, install: bool) -> Result<()> {
+    debug!("Modifying the rcfile {}", rcfile);
+    if dryrun {
+        return Ok(());
+    }
+    let rcfile = shellexpand::tilde(rcfile);
+    if install {
+        let mut file = OpenOptions::new().write(true).append(true).open(rcfile.as_ref())?;
+        writeln!(file, "\n{}\n", source_msg)?;
+    } else {
+        copy(rcfile.as_ref(), (rcfile.to_owned() + ".bak").as_ref())?;
+
+        let lines = read_to_string(rcfile.as_ref())?;
+        let lines = lines.lines().filter(|line| !line.contains(source_msg));
+
+        let file = OpenOptions::new().write(true).truncate(true).open(rcfile.as_ref())?;
+        let mut buffer = LineWriter::new(file);
+        for line in lines {
+            buffer.write(line.as_bytes())?;
+            buffer.write(&['\n' as u8])?;
+        }
+        buffer.flush()?;
+    }
+    Ok(())
 }
 
 #[cfg(target_family = "windows")]
@@ -326,40 +372,36 @@ fn handle_install(config: &Config, opts: &InstallOpts) -> Result<()> {
         create_dir_dryrun(&config.etc_dir, opts.dryrun)?;
     }
 
+    let target_dirs;
     #[cfg(target_family = "unix")]
     {
-        let target_dirs = [
-            format_path!("target", "release", PKGNAME),
-            format_path!("target", "debug", PKGNAME),
+        let target_dir = shellexpand::env("$target_dir").unwrap_or(Cow::from(""));
+        target_dirs = [
+            format_path!("target", target_dir.as_ref(), "release", PKGNAME),
+            format_path!("target", target_dir.as_ref(), "debug", PKGNAME),
         ];
-        for target in &target_dirs {
-            if target.exists() {
-                copy_in_dryrun(
-                    target.as_path(),
-                    &config.bin_dir,
-                    opts.dryrun,
-                )?;
-                break;
-            }
-        }
     }
     #[cfg(target_family = "windows")]
     {
-        let target_dirs = [
-            format_path!("target", "release", concatcp!(PKGNAME, ".exe")),
-            format_path!("target", "debug", concatcp!(PKGNAME, ".exe")),
+        let target = concatcp!(PKGNAME, ".exe");
+        let target_dir = shellexpand::env("$TARGET").unwrap_or(Cow::from(""));
+        target_dirs = [
+            format_path!("target", target_dir.as_ref(), "release", target),
+            format_path!("target", target_dir.as_ref(), "debug", target),
         ];
-        for target in &target_dirs {
-            if target.exists() {
-                copy_in_dryrun(
-                    target.as_path(),
-                    &config.bin_dir,
-                    opts.dryrun,
-                )?;
-                break;
-            }
+    }
+    let mut found = false;
+    for target in &target_dirs {
+        if target.exists() {
+            copy_in_dryrun(target.as_path(), &config.bin_dir, opts.dryrun)?;
+            found = true;
+            break;
         }
     }
+    if !found {
+        bail!("target not found in the dirs {:?}", target_dirs);
+    }
+
     copy_in_dryrun(
         format_path!("assets", "icon.png").as_path(),
         &config.share_dir,
@@ -374,27 +416,27 @@ fn handle_install(config: &Config, opts: &InstallOpts) -> Result<()> {
     #[cfg(target_family = "windows")]
     {
         copy_in_dryrun(
-            format_path!("scripts", concatcp!(PKGNAME, ".lua")).as_path(),
+            format_path!("scripts", "install", concatcp!(PKGNAME, ".lua")).as_path(),
             &config.clink_dir,
             opts.dryrun,
         )?;
         copy_in_dryrun(
-            format_path!("scripts", "j.bat").as_path(),
+            format_path!("scripts", "install", "j.bat").as_path(),
             &config.bin_dir,
             opts.dryrun,
         )?;
         copy_in_dryrun(
-            format_path!("scripts", "jc.bat").as_path(),
+            format_path!("scripts", "install", "jc.bat").as_path(),
             &config.bin_dir,
             opts.dryrun,
         )?;
         copy_in_dryrun(
-            format_path!("scripts", "jo.bat").as_path(),
+            format_path!("scripts", "install", "jo.bat").as_path(),
             &config.bin_dir,
             opts.dryrun,
         )?;
         copy_in_dryrun(
-            format_path!("scripts", "jco.bat").as_path(),
+            format_path!("scripts", "install", "jco.bat").as_path(),
             &config.bin_dir,
             opts.dryrun,
         )?;
@@ -406,27 +448,27 @@ fn handle_install(config: &Config, opts: &InstallOpts) -> Result<()> {
     #[cfg(target_family = "unix")]
     {
         copy_in_dryrun(
-            format_path!("scripts", concatcp!(PKGNAME, ".sh")).as_path(),
+            format_path!("scripts", "install", concatcp!(PKGNAME, ".sh")).as_path(),
             &config.etc_dir,
             opts.dryrun,
         )?;
         copy_in_dryrun(
-            format_path!("scripts", concatcp!(PKGNAME, ".bash")).as_path(),
+            format_path!("scripts", "install", concatcp!(PKGNAME, ".bash")).as_path(),
             &config.share_dir,
             opts.dryrun,
         )?;
         copy_in_dryrun(
-            format_path!("scripts", concatcp!(PKGNAME, ".fish")).as_path(),
+            format_path!("scripts", "install", concatcp!(PKGNAME, ".fish")).as_path(),
             &config.share_dir,
             opts.dryrun,
         )?;
         copy_in_dryrun(
-            format_path!("scripts", concatcp!(PKGNAME, ".zsh")).as_path(),
+            format_path!("scripts", "install", concatcp!(PKGNAME, ".zsh")).as_path(),
             &config.share_dir,
             opts.dryrun,
         )?;
         copy_in_dryrun(
-            format_path!("scripts", "_j").as_path(),
+            format_path!("scripts", "install", "_j").as_path(),
             &config.zshshare_dir,
             opts.dryrun,
         )?;
@@ -436,7 +478,7 @@ fn handle_install(config: &Config, opts: &InstallOpts) -> Result<()> {
         }
     }
 
-    show_post_installation_message(&config.etc_dir, &config.share_dir, &config.bin_dir);
+    post_install(&config.etc_dir, &config.share_dir, &config.bin_dir, opts.dryrun)?;
 
     Ok(())
 }
@@ -551,6 +593,21 @@ fn remove_system_installation(config: &mut Config, dryrun: bool) -> Result<()> {
     Ok(())
 }
 
+fn cleanup_source_file(config: &Config, dryrun: bool) -> Result<()> {
+    let (rcfile, source_msg) = get_rc_file(&config.etc_dir, &config.share_dir);
+    info!("Clean up {} stuff from rcfile {}", PKGNAME, rcfile);
+
+    if let Err(e) = modify_bin_rcfile(&rcfile, &source_msg, dryrun, false) {
+        warn!("Failed to revert changes from {}", rcfile);
+        info!("{} has been saved to {}.bak", rcfile, rcfile);
+        info!("Please manually remove the following line(s) from {}", rcfile);
+        // TODO: add colors
+        info!("{}", source_msg);
+        bail!(e);
+    }
+    Ok(())
+}
+
 fn remove_user_data(dryrun: bool) -> Result<()> {
     let data_home = get_app_path().join(PKGNAME);
     if data_home.exists() {
@@ -567,6 +624,7 @@ fn handle_uninstall(config: &mut Config, opts: &InstallOpts) -> Result<()> {
         info!("Uninstalling {}...", PKGNAME);
     }
 
+    cleanup_source_file(config, opts.dryrun)?;
     remove_default_installation(opts.dryrun)?;
     remove_custom_installation(config, opts.dryrun)?;
     remove_system_installation(config, opts.dryrun)?;

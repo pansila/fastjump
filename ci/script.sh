@@ -14,11 +14,10 @@ main() {
     # cross test --target $TARGET --release
 
     src=$(cross run --target $TARGET --bin install -- --install | tail -n 4 | head -1)
-    eval $src || exit 1
+    cross run --target $TARGET --bin test -- $src
+    cross run --target $TARGET --bin install -- --uninstall
     # cross run --target $TARGET --release --bin $CRATE_NAME
 
-    j
-    j -s
     # cross run --target $TARGET --release --bin $CRATE_NAME
 }
 

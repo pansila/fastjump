@@ -127,7 +127,7 @@ dependencies = [
 
 [[package]]
 name = "fastjump"
-version = "0.1.4"
+version = "0.1.5"
 dependencies = [
  "anyhow",
  "bincode",
@@ -136,6 +136,7 @@ dependencies = [
  "env_logger",
  "lazy_static",
  "log",
+ "path-clean",
  "serde",
  "shellexpand",
  "strsim 0.10.0",
@@ -198,6 +199,12 @@ checksum = "51b9bbe6c47d51fc3e1a9b945965946b4c44142ab8792c50835a980d362c2710"
 dependencies = [
  "cfg-if",
 ]
+
+[[package]]
+name = "path-clean"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ecba01bf2678719532c5e3059e0b5f0811273d94b397088b82e3bd0a78c78fdd"
 
 [[package]]
 name = "ppv-lite86"

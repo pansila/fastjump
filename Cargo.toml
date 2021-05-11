@@ -1,16 +1,13 @@
 [package]
-name = "fastjump"
-version = "0.1.4"
 authors = ["Lin Zhou <pansila@163.com>"]
-edition = "2018"
-repository = "https://github.com/pansila/fastjump"
-license = "MIT"
-keywords = ["bash", "click"]
 categories = ["command-line-utilities"]
+edition = "2018"
+keywords = ["bash", "click"]
+license = "MIT"
+name = "fastjump"
 readme = "README.md"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
+repository = "https://github.com/pansila/fastjump"
+version = "0.1.5"
 [[bin]]
 name = "install"
 path = "src/bin/install.rs"
@@ -19,15 +16,27 @@ path = "src/bin/install.rs"
 anyhow = "^1.0.40"
 bincode = "^1.3.3"
 const_format = "^0.2.14"
-env_logger = {version = "^0.8.3", default-features = false, features = ["termcolor", "atty"]}
 lazy_static = "^1.4.0"
 log = "^0.4.14"
-serde = {version = "^1.0.125", features = ["derive"]}
+path-clean = "^0.1.0"
 shellexpand = "^2.1.0"
 strsim = "^0.10.0"
 structopt = "^0.3.21"
 tempfile = "^3.2.0"
 
+[dependencies.env_logger]
+default-features = false
+features = ["termcolor", "atty"]
+version = "^0.8.3"
+
+[dependencies.serde]
+features = ["derive"]
+version = "^1.0.125"
+
 [dev-dependencies]
 ctor = "^0.1.20"
-env_logger = {version = "^0.8.3", default-features = false, features = ["atty", "humantime"]}
+
+[dev-dependencies.env_logger]
+default-features = false
+features = ["atty", "humantime"]
+version = "^0.8.3"

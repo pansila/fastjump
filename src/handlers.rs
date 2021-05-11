@@ -1,5 +1,7 @@
 use crate::common::config::Config;
-use crate::common::utils::{find_matches, normalize_path, print_item, print_tab_menu, CWD};
+use crate::common::utils::{
+    absolute_path, find_matches, normalize_path, print_item, print_tab_menu, CWD,
+};
 use crate::database::Database;
 use anyhow::{bail, Result};
 use log::info;
@@ -19,7 +21,7 @@ pub fn handle_add_path(
     weight: Option<f32>,
     dryrun: bool,
 ) -> Result<()> {
-    let entry = normalize_path(path);
+    let entry = absolute_path(normalize_path(path));
     // TODO: what is it used for?
     if entry == Path::new(shellexpand::tilde("~").as_ref()) {
         print_item((entry.to_string_lossy(), 0.0));
@@ -98,10 +100,7 @@ fn find_results(needles: &[&Path], data: &Database, complete: bool) -> Result<()
     // TODO: invalidate instead of normalize?
     let needles: Vec<_> = needles.iter().map(|x| normalize_path(x)).collect();
     let needles: Vec<_> = needles.iter().map(|x| x.as_path()).collect();
-    let first_needle = needles
-        .get(0)
-        .unwrap_or(&Path::new(""))
-        .to_string_lossy();
+    let first_needle = needles.get(0).unwrap_or(&Path::new("")).to_string_lossy();
     let mut tabs = first_needle.split(TAB_SEPARATOR);
     let tab_needle = tabs.next();
     let tab_index = tabs.next();

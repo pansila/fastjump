@@ -46,7 +46,7 @@ fastjump_add_to_database() {
 while IFS= read -r line; do
     IFS=' '
     read -ra fields <<<$line
-    if [[ ${fields[1]} =~ ^cd$ ]]; then
+    if [[ ${fields[1]} =~ ^cd$ && -e ${fields[2]} ]]; then
         if [[ -f "${FASTJUMP_ERROR_PATH}" ]]; then
             (fastjump --add ${fields[2]} >/dev/null 2>>${FASTJUMP_ERROR_PATH} &) &>/dev/null
         else

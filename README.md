@@ -21,9 +21,11 @@ We have [prebuilt binaries](https://github.com/pansila/fastjump/releases) availa
    (some benchmarks need to go here)
    ```
 - [x] Using `serde` with `bincode` to provide a faster serialization/deserialization for the database.
+- [x] Getting rid of `regex` to speed up the searching and shrink the executable size.
 - [ ] Injecting into the shell to stay in the shell's memory space to speed up command invoking much further (WIP).
 - [ ] Single executable file if enable injecting technology to remove all messy scripts (WIP).
 - [ ] Jump to any directory on Windows by integrating with bleeding fast file searcher [Everything](https://www.voidtools.com/) (WIP).
+- [ ] luck mode, `j` to the most recently accessed directory.
 
 # Compatibility
 1. All of the command line flags and arguments of `autojump` are implemented, and behave exactly like the original. All other shell features like tab completion should work too. (Except jc and jco; see below.)
