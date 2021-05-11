@@ -39,7 +39,7 @@ test_script:
   - if [%APPVEYOR_REPO_TAG%]==[false] (
       cargo build --target %TARGET% &&
       cargo test --target %TARGET% &&
-      cargo run --target %TARGET% --bin %CRATE_NAME%
+      cargo run --target %TARGET% --bin %CRATE_NAME% &&
       ci\script.bat
     )
 

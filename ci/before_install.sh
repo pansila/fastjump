@@ -6,9 +6,11 @@ common_install() {
 }
 
 install_for_linux() {
+    echo 111
 }
 
 install_for_macos() {
+    echo 111
 }
 
 if [ $TRAVIS_OS_NAME = linux ]; then
