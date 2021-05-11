@@ -35,6 +35,10 @@ install:
   - cargo -V
 
 test_script:
+  - ps: Get-ExecutionPolicy
+  - ps: Set-ExecutionPolicy Bypass -Scope Process -Force; iex ((New-Object System.Net.WebClient).DownloadString('https://chocolatey.org/install.ps1'))
+  - ps: choco install clink -y
+  - ps: choco install cmder -y
   # we don't run the "test phase" when doing deploys
   - if [%APPVEYOR_REPO_TAG%]==[false] (
       cargo build --target %TARGET% &&

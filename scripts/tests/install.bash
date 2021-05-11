@@ -16,7 +16,7 @@ test_linux() {
     fi
 
     if [ $? -ne 0 ]; then
-        echo "Failed to install bash" > &2
+        >&2 echo "Failed to install bash"
         exit 1
     fi
 }
@@ -31,7 +31,7 @@ ret=$($target --install 2>&1)
 
 src=$(echo "$ret" | tail -n 1 | head -n 1 | awk '{print $(NF)}')
 if [ -z $src ]; then
-    echo "can not find the source file" > &2
+    >&2 echo "can not find the source file"
     exit 1
 fi
 
