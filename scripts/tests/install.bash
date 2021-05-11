@@ -1,6 +1,13 @@
 #!/bin/sh
 
-sudo apt-get install -y bash >&2 1>/dev/null
+sudo -h >/dev/null 2>&1
+
+if [ $? -eq 0 ]; then
+    sudo apt-get install -y bash >/dev/null 2>&1
+else
+    apt-get install -y bash >/dev/null 2>&1
+fi
+
 if [ $? -ne 0 ]; then
     echo "Failed to install bash" > 2
     exit 1;

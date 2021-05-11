@@ -267,9 +267,8 @@ impl TestSteps for TcshTest {
     }
 }
 
-#[test]
-/// run the tests sequentially as they are sharing one database.
-fn run_all_tests() -> Result<()> {
+#[cfg(target_family = "unix")]
+fn run_tests_for_unix() -> Result<()> {
     let bash_test = BashTest(Test {
         test_name: "bast test".to_owned(),
     });
@@ -293,6 +292,23 @@ fn run_all_tests() -> Result<()> {
     for test in tests.into_iter() {
         TestRunner { test }.run()?;
     }
+    Ok(())
+}
+
+#[cfg(target_family = "windows")]
+fn run_tests_for_windows() -> Result<()> {
+    Ok(())
+}
+
+#[test]
+/// run the tests sequentially as they are sharing one database.
+fn run_all_tests() -> Result<()> {
+    #[cfg(target_family = "unix")]
+    run_tests_for_unix()?;
+
+    #[cfg(target_family = "windows")]
+    run_tests_for_windows()?;
+
     println!("All tests pass.");
 
     Ok(())
