@@ -80,7 +80,7 @@ impl Database {
             let temp_file = NamedTempFile::new_in(path)?;
             let (temp_file, temp_file_path) = temp_file.keep()?;
             let mut buffer = BufWriter::new(temp_file);
-            buffer.write(&bincode::serialize(self.deref())?)?;
+            buffer.write_all(&bincode::serialize(self.deref())?)?;
             buffer.flush()?;
             rename(temp_file_path, config.data_path.as_path())?;
 

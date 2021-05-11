@@ -1,8 +1,10 @@
-use anyhow::{Context, Result, bail};
-use std::{env, process::{Command, Output}};
+use anyhow::{bail, Context, Result};
 use std::io::{self, Write};
 use std::path::Path;
-
+use std::{
+    env,
+    process::{Command, Output},
+};
 
 fn test_bash(src_file: &str) -> Result<Output> {
     let output = Command::new("bash")
@@ -52,7 +54,11 @@ fn main() -> Result<()> {
     }
 
     let args: Vec<String> = env::args().collect();
-    let src_file= args.last().context("expect the source file")?;
+    let src_file = args.last().context("expect the source file")?;
+    if !Path::new(src_file).exists() {
+        bail!("source file doesn't exist");
+    }
+
     let tests = [test_bash, test_fish, test_zsh, test_tcsh];
 
     for test in &tests {
@@ -61,7 +67,7 @@ fn main() -> Result<()> {
         io::stdout().write_all(&output.stderr)?;
         if output.status.success() {
             println!("Test passes.");
-        } else  {
+        } else {
             bail!("Test exit status: {}.", output.status);
         }
     }

@@ -104,7 +104,7 @@ pub fn get_app_path() -> PathBuf {
         shellexpand::env("$APPDATA").expect("Can't find the environment variable %APPDATA%");
     #[cfg(target_os = "linux")]
     let data_home =
-        shellexpand::env("$XDG_DATA_HOME").unwrap_or(shellexpand::tilde("~/.local/share"));
+        shellexpand::env("$XDG_DATA_HOME").unwrap_or_else(|_| shellexpand::tilde("~/.local/share"));
     PathBuf::from(data_home.as_ref())
 }
 
@@ -125,7 +125,7 @@ pub fn get_install_path() -> PathBuf {
 pub fn normalize_path(path: &Path) -> PathBuf {
     if let Some(Component::Prefix(prefix)) = path.components().next() {
         if let Prefix::Disk(drive) = prefix.kind() {
-            if drive >= b'a' && drive <= b'z' {
+            if (b'a'..=b'z').contains(&drive) {
                 return path
                     .components()
                     .map(|x| {
@@ -145,14 +145,12 @@ pub fn normalize_path(path: &Path) -> PathBuf {
 pub fn absolute_path(path: impl AsRef<Path>) -> PathBuf {
     let path = path.as_ref();
 
-    let absolute_path = if path.is_absolute() {
+    if path.is_absolute() {
         path.to_path_buf()
     } else {
         (*CWD).join(path)
     }
-    .clean();
-
-    absolute_path
+    .clean()
 }
 
 pub fn print_item<T: Display>((path, weight): (T, f32)) {
@@ -202,7 +200,7 @@ pub fn find_matches<'a>(
     needles: &[&Path],
     check_existence: bool,
 ) -> Vec<(&'a Path, f32)> {
-    if needles.len() == 0 {
+    if needles.is_empty() {
         return vec![(Path::new("."), 0.0)];
     }
     if let Some(needle) = needles.get(0) {
@@ -250,7 +248,7 @@ pub fn find_matches<'a>(
         .collect();
     debug!("=> match results: {:?}", ret);
 
-    if ret.len() == 0 {
+    if ret.is_empty() {
         ret.push((Path::new("."), 0.0));
     }
     ret

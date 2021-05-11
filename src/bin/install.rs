@@ -1,20 +1,24 @@
-use anyhow::{Result, anyhow, bail};
+use anyhow::{anyhow, bail, Result};
 use const_format::concatcp;
 use fastjump::common::opts::InstallOpts;
 use fastjump::common::utils::{get_app_path, get_install_path, into_level};
 use fastjump::{copy_in, format_path};
 use log::{debug, info, warn};
+use std::borrow::Cow;
+#[cfg(target_family = "unix")]
+use std::ffi::OsStr;
 #[cfg(target_family = "windows")]
 use std::fs::read;
 #[cfg(target_family = "unix")]
 use std::fs::read_to_string;
-use std::{fs::{OpenOptions, copy, create_dir_all, remove_dir_all, remove_file}, io::LineWriter};
 use std::io::ErrorKind;
 use std::io::Write;
 use std::path::{Path, PathBuf};
+use std::{
+    fs::{copy, create_dir_all, remove_dir_all, remove_file, OpenOptions},
+    io::LineWriter,
+};
 use structopt::StructOpt;
-#[cfg(target_family = "unix")]
-use {std::borrow::Cow, std::ffi::OsStr};
 
 const PKGNAME: &str = env!("CARGO_PKG_NAME");
 #[cfg(target_family = "unix")]
@@ -40,9 +44,11 @@ struct Config {
 
 impl Config {
     pub fn new() -> Self {
-        let mut config: Self = Default::default();
-        config.prefix = "".to_string();
-        config.install_dir = get_install_path();
+        let config = Config {
+            prefix: "".to_string(),
+            install_dir: get_install_path(),
+            ..Default::default()
+        };
         debug!("Default install location: {}", config.install_dir.display());
 
         #[cfg(target_family = "windows")]
@@ -87,7 +93,7 @@ impl Config {
 
     pub fn update_from_opts(&mut self, opts: &InstallOpts) -> Result<()> {
         if let Some(Some(install)) = &opts.install {
-            if Path::new(install) != &self.install_dir {
+            if Path::new(install) != self.install_dir {
                 self.custom_install = true;
                 self.install_dir = PathBuf::from(install);
             }
@@ -169,12 +175,16 @@ fn is_empty_dir(path: &Path) -> Result<bool> {
 
 #[cfg(target_family = "unix")]
 fn get_shell() -> String {
-    Path::new(shellexpand::env("$SHELL").unwrap_or(Cow::from("")).as_ref())
-        .file_name()
-        .unwrap_or(OsStr::new(""))
-        .to_str()
-        .unwrap_or("")
-        .to_string()
+    Path::new(
+        shellexpand::env("$SHELL")
+            .unwrap_or_else(|_| Cow::from(""))
+            .as_ref(),
+    )
+    .file_name()
+    .unwrap_or_else(|| OsStr::new(""))
+    .to_str()
+    .unwrap_or("")
+    .to_string()
 }
 
 fn check_opts(opts: &InstallOpts) -> Result<()> {
@@ -265,8 +275,17 @@ fn post_install(_etc_dir: &Path, _share_dir: &Path, _bin_dir: &Path, dryrun: boo
         info!("");
         info!("Please restart terminal(s) to take effect.");
         info!("");
-        info!("If you want to try '{}' in the current shell, please run the following line manually.", PKGNAME);
-        info!("source {}", source_msg.split_whitespace().last().unwrap_or("Error: no source file found"));
+        info!(
+            "If you want to try '{}' in the current shell, please run the following line manually.",
+            PKGNAME
+        );
+        info!(
+            "source {}",
+            source_msg
+                .split_whitespace()
+                .last()
+                .unwrap_or("Error: no source file found")
+        );
     }
 
     Ok(())
@@ -280,7 +299,10 @@ fn modify_bin_rcfile(rcfile: &str, source_msg: &str, dryrun: bool, install: bool
     }
     let rcfile = shellexpand::tilde(rcfile);
     if install {
-        let mut file = OpenOptions::new().write(true).append(true).open(rcfile.as_ref())?;
+        let mut file = OpenOptions::new()
+            .write(true)
+            .append(true)
+            .open(rcfile.as_ref())?;
         writeln!(file, "\n{}\n", source_msg)?;
     } else {
         copy(rcfile.as_ref(), (rcfile.to_owned() + ".bak").as_ref())?;
@@ -288,11 +310,14 @@ fn modify_bin_rcfile(rcfile: &str, source_msg: &str, dryrun: bool, install: bool
         let lines = read_to_string(rcfile.as_ref())?;
         let lines = lines.lines().filter(|line| !line.contains(source_msg));
 
-        let file = OpenOptions::new().write(true).truncate(true).open(rcfile.as_ref())?;
+        let file = OpenOptions::new()
+            .write(true)
+            .truncate(true)
+            .open(rcfile.as_ref())?;
         let mut buffer = LineWriter::new(file);
         for line in lines {
-            buffer.write(line.as_bytes())?;
-            buffer.write(&['\n' as u8])?;
+            buffer.write_all(line.as_bytes())?;
+            buffer.write_all(&[b'\n'])?;
         }
         buffer.flush()?;
     }
@@ -343,7 +368,7 @@ fn modify_bin_sh(etc_dir: &Path, share_dir: &Path, dryrun: bool) -> Result<()> {
 
     let etc_file = etc_dir.join(concatcp!(PKGNAME, ".sh"));
     let mut file = OpenOptions::new().write(true).open(etc_file)?;
-    file.write(custom_install.as_bytes())?;
+    file.write_all(custom_install.as_bytes())?;
 
     Ok(())
 }
@@ -375,7 +400,7 @@ fn handle_install(config: &Config, opts: &InstallOpts) -> Result<()> {
     let target_dirs;
     #[cfg(target_family = "unix")]
     {
-        let target_dir = shellexpand::env("$target_dir").unwrap_or(Cow::from(""));
+        let target_dir = shellexpand::env("$target_dir").unwrap_or_else(|_| Cow::from(""));
         target_dirs = [
             format_path!("target", target_dir.as_ref(), "release", PKGNAME),
             format_path!("target", target_dir.as_ref(), "debug", PKGNAME),
@@ -478,7 +503,12 @@ fn handle_install(config: &Config, opts: &InstallOpts) -> Result<()> {
         }
     }
 
-    post_install(&config.etc_dir, &config.share_dir, &config.bin_dir, opts.dryrun)?;
+    post_install(
+        &config.etc_dir,
+        &config.share_dir,
+        &config.bin_dir,
+        opts.dryrun,
+    )?;
 
     Ok(())
 }
@@ -600,7 +630,10 @@ fn cleanup_source_file(config: &Config, dryrun: bool) -> Result<()> {
     if let Err(e) = modify_bin_rcfile(&rcfile, &source_msg, dryrun, false) {
         warn!("Failed to revert changes from {}", rcfile);
         info!("{} has been saved to {}.bak", rcfile, rcfile);
-        info!("Please manually remove the following line(s) from {}", rcfile);
+        info!(
+            "Please manually remove the following line(s) from {}",
+            rcfile
+        );
         // TODO: add colors
         info!("{}", source_msg);
         bail!(e);

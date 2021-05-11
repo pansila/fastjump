@@ -1,13 +1,12 @@
 use anyhow::Result;
-use fastjump::common::config::Config;
 use fastjump::common::opts::Opts;
-use structopt::StructOpt;
 use fastjump::common::utils::{environment_check, setup_logger, CWD};
 use fastjump::database::Database;
 use fastjump::handlers::{
     handle_add_path, handle_decrease_path, handle_jump, handle_print_stats, handle_purge,
     handle_tab_completion,
 };
+use structopt::StructOpt;
 
 // TODO: cleanup - remove unwrap
 // TODO: cleanup - remove panicable calls, eg. expect, toss up as a result
@@ -22,7 +21,7 @@ fn main() -> Result<()> {
     let opts = Opts::from_args();
     setup_logger(&opts);
 
-    let config = Config::new();
+    let config = Default::default();
     let mut data = Database::new(&config)?;
 
     if let Some(directory) = opts.add {

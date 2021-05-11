@@ -13,21 +13,21 @@ const PKGNAME: &str = env!("CARGO_PKG_NAME");
 lazy_static! {
     static ref FUZZY_MATCH_THRESHOLD: f64 =
         shellexpand::env(format!("${}_FUZZY_THRESHOLD", PKGNAME.to_ascii_lowercase()).as_str())
-            .unwrap_or(Cow::from("0.6"))
+            .unwrap_or_else(|_| Cow::from("0.6"))
             .parse()
             .unwrap_or(0.6);
 }
 
 pub trait MakeAsciiLowercaseCow {
-    fn make_ascii_lowercase_cow(self: &mut Self);
+    fn make_ascii_lowercase_cow(&mut self);
 }
 
 pub trait MakeAsciiUppercaseCow {
-    fn make_ascii_uppercase_cow(self: &mut Self);
+    fn make_ascii_uppercase_cow(&mut self);
 }
 
 impl MakeAsciiLowercaseCow for Cow<'_, str> {
-    fn make_ascii_lowercase_cow(self: &mut Self) {
+    fn make_ascii_lowercase_cow(&mut self) {
         if self.chars().any(|x| x.is_ascii_uppercase()) {
             self.to_mut().make_ascii_lowercase();
         }
@@ -35,7 +35,7 @@ impl MakeAsciiLowercaseCow for Cow<'_, str> {
 }
 
 impl MakeAsciiUppercaseCow for Cow<'_, str> {
-    fn make_ascii_uppercase_cow(self: &mut Self) {
+    fn make_ascii_uppercase_cow(&mut self) {
         if self.chars().any(|x| x.is_ascii_lowercase()) {
             self.to_mut().make_ascii_uppercase();
         }
@@ -56,7 +56,8 @@ pub fn match_anywhere<'a>(
     for (k, v) in data.iter() {
         let mut path = k.to_string_lossy();
         path.make_ascii_lowercase_cow();
-        if needles.iter().try_fold((), &mut |_, needle: &&Path| {
+
+        let contains = &mut |_, needle: &&Path| {
             // TODO: do overlapped cases matter?
             // TODO: does needles order matter?
             if ignore_case {
@@ -65,14 +66,12 @@ pub fn match_anywhere<'a>(
                 if !path.contains(needle.as_ref()) {
                     return None;
                 }
-            } else {
-                if !path.contains(needle.to_string_lossy().as_ref()) {
-                    return None;
-                }
+            } else if !path.contains(needle.to_string_lossy().as_ref()) {
+                return None;
             }
             Some(())
-        }) != None
-        {
+        };
+        if needles.iter().try_fold((), contains) != None {
             trace!("pushing ({}, {})", k.to_string_lossy(), v);
             candidates.push((k, *v));
         }
@@ -107,10 +106,8 @@ pub fn match_consecutive<'a>(
                     if !part.contains(needle.as_ref()) {
                         return None;
                     }
-                } else {
-                    if !part.contains(needle.to_string_lossy().as_ref()) {
-                        return None;
-                    }
+                } else if !part.contains(needle.to_string_lossy().as_ref()) {
+                    return None;
                 }
             } else {
                 return None;
