@@ -40,6 +40,8 @@ test_script:
       cargo build --target %TARGET% &&
       cargo test --target %TARGET% &&
       cargo run --target %TARGET%  --bin %CRATE_NAME%
+      cargo run --target %TARGET%  --bin install -- --install
+      cargo run --target %TARGET%  --bin install -- --uninstall
     )
 
 before_deploy:
@@ -68,6 +70,7 @@ branches:
     # Release tags
     - /^v\d+\.\d+\.\d+.*$/
     - main
+    - dev
 
 notifications:
   - provider: Email

@@ -121,6 +121,7 @@ branches:
     # release tags
     - /^v\d+\.\d+\.\d+.*$/
     - main
+    - dev
 
 notifications:
   email:

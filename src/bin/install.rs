@@ -14,10 +14,9 @@ use std::fs::read_to_string;
 use std::io::ErrorKind;
 use std::io::Write;
 use std::path::{Path, PathBuf};
-use std::{
-    fs::{copy, create_dir_all, remove_dir_all, remove_file, OpenOptions},
-    io::LineWriter,
-};
+use std::fs::{copy, create_dir_all, remove_dir_all, remove_file, OpenOptions};
+#[cfg(target_family = "unix")]
+use std::io::LineWriter;
 use structopt::StructOpt;
 
 const PKGNAME: &str = env!("CARGO_PKG_NAME");
@@ -175,6 +174,11 @@ fn is_empty_dir(path: &Path) -> Result<bool> {
 
 #[cfg(target_family = "unix")]
 fn get_shell() -> String {
+    // cross runs directly without any shell, we assume it's bash
+    // as test_stage will install needed shells anyway
+    if shellexpand::env("$TRAVIS").is_ok() {
+        return "bash".to_string();
+    }
     Path::new(
         shellexpand::env("$SHELL")
             .unwrap_or_else(|_| Cow::from(""))
@@ -623,6 +627,7 @@ fn remove_system_installation(config: &mut Config, dryrun: bool) -> Result<()> {
     Ok(())
 }
 
+#[cfg(target_family = "unix")]
 fn cleanup_source_file(config: &Config, dryrun: bool) -> Result<()> {
     let (rcfile, source_msg) = get_rc_file(&config.etc_dir, &config.share_dir);
     info!("Clean up {} stuff from rcfile {}", PKGNAME, rcfile);
@@ -657,6 +662,7 @@ fn handle_uninstall(config: &mut Config, opts: &InstallOpts) -> Result<()> {
         info!("Uninstalling {}...", PKGNAME);
     }
 
+    #[cfg(target_family = "unix")]
     cleanup_source_file(config, opts.dryrun)?;
     remove_default_installation(opts.dryrun)?;
     remove_custom_installation(config, opts.dryrun)?;
