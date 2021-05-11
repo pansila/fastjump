@@ -8,7 +8,7 @@ build_stage() {
 }
 
 test_stage() {
-    cross test --target $TARGET --skip 
+    cross test --target $TARGET 
     # cross test --target $TARGET --release
 }
 

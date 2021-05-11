@@ -3,18 +3,20 @@ use const_format::concatcp;
 use fastjump::common::opts::InstallOpts;
 use fastjump::common::utils::{get_app_path, get_install_path, into_level};
 use fastjump::{copy_in, format_path};
-use log::{debug, info, warn};
+use log::{debug, info};
 use std::borrow::Cow;
-#[cfg(target_family = "unix")]
-use std::ffi::OsStr;
 #[cfg(target_family = "windows")]
 use std::fs::read;
 #[cfg(target_family = "unix")]
-use std::fs::read_to_string;
-use std::fs::{copy, create_dir_all, remove_dir_all, remove_file, OpenOptions};
+use {
+    std::ffi::OsStr,
+    std::fs::read_to_string,
+    std::io::LineWriter,
+    log::warn,
+    std::fs::copy,
+};
+use std::fs::{create_dir_all, remove_dir_all, remove_file, OpenOptions};
 use std::io::ErrorKind;
-#[cfg(target_family = "unix")]
-use std::io::LineWriter;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 use structopt::StructOpt;
@@ -43,7 +45,7 @@ struct Config {
 
 impl Config {
     pub fn new() -> Self {
-        let config = Config {
+        let mut config = Config {
             prefix: "".to_string(),
             install_dir: get_install_path(),
             ..Default::default()
@@ -64,6 +66,10 @@ impl Config {
                     config.clink_dir.display()
                 );
             }
+        }
+        #[cfg(target_family = "unix")]
+        {
+            config.zshshare_dir = config.install_dir.join("functions");
         }
 
         config
@@ -250,7 +256,7 @@ fn get_rc_file(etc_dir: &Path, share_dir: &Path) -> (String, String) {
     (rcfile, source_msg)
 }
 
-fn post_install(_etc_dir: &Path, _share_dir: &Path, _bin_dir: &Path, dryrun: bool) -> Result<()> {
+fn post_install(_etc_dir: &Path, _share_dir: &Path, _bin_dir: &Path, _dryrun: bool) -> Result<()> {
     #[cfg(target_family = "windows")]
     println!(
         "\nPlease manually add {} to your user 'PATH'",
@@ -265,7 +271,7 @@ fn post_install(_etc_dir: &Path, _share_dir: &Path, _bin_dir: &Path, dryrun: boo
         }
 
         info!("Add {} to the rcfile {}", PKGNAME, rcfile);
-        if let Err(e) = modify_bin_rcfile(&rcfile, &source_msg, dryrun, true) {
+        if let Err(e) = modify_bin_rcfile(&rcfile, &source_msg, _dryrun, true) {
             debug!("{}", e);
             warn!("Failed to add {} to {}", PKGNAME, rcfile);
             info!("Please manually add the following line(s) to {}:", rcfile);
