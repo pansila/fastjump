@@ -80,6 +80,7 @@ matrix:
 before_install:
   - set -e
   - rustup self update
+  - sh ci/before_install.sh
 
 install:
   - sh ci/install.sh

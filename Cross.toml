@@ -3,6 +3,5 @@ passthrough = [
     "RUST_BACKTRACE",
     "RUST_LOG",
     "TRAVIS",
-    "TRAVIS_OS_NAME",
     "TARGET",
 ]
