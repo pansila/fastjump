@@ -2,8 +2,8 @@
 
 target="target/$TARGET/debug/install"
 
-ret=$($target --install 2>&1)
-echo 1111, $ret
+ret=$($target --install)
+echo $ret
 
 src=$(echo "$ret" | tail -n 1 | head -n 1 | awk '{print $(NF)}')
 if [ -z $src ]; then
