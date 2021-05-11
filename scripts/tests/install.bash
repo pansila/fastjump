@@ -1,11 +1,5 @@
 #!/bin/sh
 
-if [ $TRAVIS_OS_NAME = linux ]; then
-    test_linux
-else
-    test_macos
-fi
-
 test_linux() {
     sudo -h >/dev/null 2>&1
 
@@ -22,8 +16,14 @@ test_linux() {
 }
 
 test_macos() {
-
+    echo 111
 }
+
+if [ $TRAVIS_OS_NAME = linux ]; then
+    test_linux
+else
+    test_macos
+fi
 
 target="target/$TARGET/debug/install"
 
