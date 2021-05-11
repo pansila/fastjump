@@ -11,12 +11,12 @@ use std::ffi::OsStr;
 use std::fs::read;
 #[cfg(target_family = "unix")]
 use std::fs::read_to_string;
-use std::io::ErrorKind;
-use std::io::Write;
-use std::path::{Path, PathBuf};
 use std::fs::{copy, create_dir_all, remove_dir_all, remove_file, OpenOptions};
+use std::io::ErrorKind;
 #[cfg(target_family = "unix")]
 use std::io::LineWriter;
+use std::io::Write;
+use std::path::{Path, PathBuf};
 use structopt::StructOpt;
 
 const PKGNAME: &str = env!("CARGO_PKG_NAME");
@@ -174,11 +174,6 @@ fn is_empty_dir(path: &Path) -> Result<bool> {
 
 #[cfg(target_family = "unix")]
 fn get_shell() -> String {
-    // cross runs directly without any shell, we assume it's bash
-    // as test_stage will install needed shells anyway
-    if shellexpand::env("$TRAVIS").is_ok() {
-        return "bash".to_string();
-    }
     Path::new(
         shellexpand::env("$SHELL")
             .unwrap_or_else(|_| Cow::from(""))

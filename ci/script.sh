@@ -7,20 +7,9 @@ build_stage() {
     # cross build --target $TARGET --release
 }
 
-unit_test_stage() {
-    cross test --target $TARGET
+test_stage() {
+    cross test --target $TARGET --skip 
     # cross test --target $TARGET --release
-}
-
-integration_test_stage() {
-    src=$(cross run --target $TARGET --bin install -- --install | tail -n 1)
-    if [ -z $src ]; then
-        exit 1
-    fi
-
-    cross run --target $TARGET --bin test -- $src
-
-    cross run --target $TARGET --bin install -- --uninstall
 }
 
 main() {
@@ -30,9 +19,7 @@ main() {
         return
     fi
 
-    unit_test_stage
-
-    integration_test_stage
+    test_stage
 }
 
 # we don't run the "test phase" when doing deploys
