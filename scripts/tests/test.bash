@@ -1,7 +1,10 @@
 #!/bin/bash
 # set -x
-echo $1
+
 source $1
+if [ $? -ne 0 ]; then
+    exit 1
+fi
 
 j -h
 

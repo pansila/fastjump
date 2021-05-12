@@ -36,6 +36,7 @@ version = "^1.0.125"
 [dev-dependencies]
 ctor = "^0.1.20"
 downcast-rs = "^1.2.0"
+paste = "^1.0.5"
 
 [dev-dependencies.env_logger]
 default-features = false

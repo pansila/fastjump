@@ -1,4 +1,12 @@
-cargo run --target %TARGET% --bin install -- --install &&
+if [%APPVEYOR_REPO_TAG%]==[true] (
+    exit 0
+)
+
+cargo build --target %TARGET%
+cargo test --target %TARGET%
+cargo run --target %TARGET% --bin %CRATE_NAME%
+
+target\%TARGET%\debug\install --install
 
 C:\Users\appveyor\AppData\Local\fastjump\bin\fastjump.exe -h
 C:\Users\appveyor\AppData\Local\fastjump\bin\j
@@ -9,4 +17,4 @@ cd C:\Users\appveyor
 C:\Users\appveyor\AppData\Local\fastjump\bin\j -s
 cd C:\projects\fastjump
 
-cargo run --target %TARGET% --bin install -- --uninstall --purge
+target\%TARGET%\debug\install --uninstall --purge

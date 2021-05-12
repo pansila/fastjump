@@ -7,8 +7,18 @@ build_stage() {
     # cross build --target $TARGET --release
 }
 
-test_stage() {
-    cross test --target $TARGET 
+unit_test_stage() {
+    cross test --target $TARGET -- --skip integration_tests
+    # cross test --target $TARGET --release
+}
+
+integration_test_stage() {
+    # only x86 code is runnable in the traivs
+    if [ ! $TARGET = x86_64-unknown-linux-gnu -and ! $TARGET = i686-unknown-linux-gnu ]; then
+        return
+    fi
+
+    cross test integration_tests --target $TARGET -- --nocaputre
     # cross test --target $TARGET --release
 }
 
@@ -19,7 +29,9 @@ main() {
         return
     fi
 
-    test_stage
+    unit_test_stage
+
+    integration_test_stage
 }
 
 # we don't run the "test phase" when doing deploys

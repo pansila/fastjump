@@ -97,7 +97,7 @@ install:
   - source ~/.cargo/env || true
 
 script:
-  - bash ci/script.sh
+  - sh ci/script.sh
 
 after_script: set +e
 
