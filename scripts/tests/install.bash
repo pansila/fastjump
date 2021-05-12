@@ -1,11 +1,11 @@
 # TODO: shell is not set in the cross container
-if [ -z $SHELL ]; then
+if [ ! -v $SHELL ]; then
     echo "Warning: env var SHELL is not set" >&2
     export SHELL=/bin/bash
 fi
 
 # TODO: Mac OS has no var TARGET
-if [ -z $TARGET ]; then
+if [ ! -v $TARGET ]; then
     echo "Warning: env var TARGET is not set" >&2
     export TARGET=x86_64-apple-darwin
 fi

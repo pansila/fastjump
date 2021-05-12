@@ -14,11 +14,11 @@ unit_test_stage() {
 
 integration_test_stage() {
     # only x86 code is runnable in the traivs
-    if [ ! $TARGET = x86_64-unknown-linux-gnu -and ! $TARGET = i686-unknown-linux-gnu ]; then
+    if [ ! $TARGET = x86_64-unknown-linux-gnu ] && [ ! $TARGET = i686-unknown-linux-gnu ]; then
         return
     fi
 
-    cross test integration_tests --target $TARGET -- --nocaputre
+    cross test integration_tests --target $TARGET -- --nocapture
     # cross test --target $TARGET --release
 }
 
