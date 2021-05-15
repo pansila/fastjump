@@ -3,17 +3,17 @@ all_windows: powershell cmd
 
 install:
 	#!/bin/sh
-	$src=$(target/release/install --install | tail -n 1 | head -n 1 | awk '{print $(NF)}')
+	$src=$(target/debug/install --install | tail -n 1 | head -n 1 | awk '{print $(NF)}')
 	if [ $? -ne 0 ]; then
 		exit 1
 	fi
 	export __SRC_FILE=$src
 
 install_cmd:
-	target/release/install --install
+	target/debug/install --install
 
 uninstall:
-	target/release/install --uninstall
+	target/debug/install --uninstall
 
 tests_cmd:
 	#!cmd /c
