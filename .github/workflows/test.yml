@@ -36,6 +36,7 @@ jobs:
         override: true
 
     - uses: Swatinem/rust-cache@v1
+    - uses: extractions/setup-just@v1
 
     - name: Build
       env:
@@ -72,7 +73,6 @@ jobs:
     - name: Integration Test
       env:
         TARGET: ${{ matrix.target }}
-      uses: extractions/setup-just@v1
       if: ${{ matrix.os == windows-latest }}
       run: just
       with:
@@ -85,7 +85,6 @@ jobs:
     - name: Integration Test
       env:
         TARGET: ${{ matrix.target }}
-      uses: extractions/setup-just@v1
       if: ${{ matrix.os != windows-latest }}
       run: just
       with:
