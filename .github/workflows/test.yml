@@ -86,10 +86,6 @@ jobs:
       run: just
       with:
         args: all_windows
-      if: ${{ matrix.os != 'windows-latest' }}
-      run: just
-      with:
-        args: all
 
     - name: Integration Test
       env:
@@ -98,7 +94,3 @@ jobs:
       run: just
       with:
         args: all
-      if: ${{ matrix.os == 'windows-latest' }}
-      run: just
-      with:
-        args: all_windows
