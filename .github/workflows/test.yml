@@ -34,6 +34,13 @@ jobs:
         profile: minimal
         toolchain: stable
         override: true
+        target: ${{ matrix.target }}
+
+    - name: Version
+      run: |
+        rustup --version
+        cargo --version
+        cargo clippy --version
 
     - uses: Swatinem/rust-cache@v1
     - uses: extractions/setup-just@v1
