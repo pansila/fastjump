@@ -1,0 +1,96 @@
+name: Test on commits
+
+on:
+  push:
+    branches: [ main, dev ]
+  pull_request:
+    branches: [ main ]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  per_os_tests:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        include:
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+          - os: macos-latest
+            target: x86_64-apple-darwin
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+
+    steps:
+    - name: Checkout sources
+      uses: actions/checkout@v2
+
+    - name: Install stable toolchain
+      uses: actions-rs/toolchain@v1
+      with:
+        profile: minimal
+        toolchain: stable
+        override: true
+
+    - uses: Swatinem/rust-cache@v1
+
+    - name: Build
+      env:
+        TARGET: ${{ matrix.target }}
+      uses: actions-rs/cargo@v1
+      with:
+        command: build
+        args: --target $TARGET
+
+    - name: Unit Test
+      env:
+        TARGET: ${{ matrix.target }}
+      uses: actions-rs/cargo@v1
+      with:
+        command: test
+        args: --target $TARGET
+
+    - name: Install Tools for Tests
+      continue-on-error: true
+      if: ${{ matrix.os == ubuntu-latest }}
+      run: apt install bash zsh fish tcsh
+      run: wget https://github.com/nushell/nushell/releases/download/0.31.0/nu_0_31_0_linux.tar.gz
+      run: tar xf nu_0_31_0_linux.tar.gz
+      run: cp nu_0_31_0_linux/nushell-0.31.0/* $HOEM/.local/bin
+      run: curl --proto '=https' --tlsv1.2 -sSf https://just.systems/install.sh | bash -s -- --to $HOME/.local/bin
+      if: ${{ matrix.os == windows-latest }}
+      run: cinst -y clink cmder
+      run: scoop install just
+      # run: wget https://github.com/nushell/nushell/releases/download/0.31.0/nu_0_31_0_windows.zip
+      if: ${{ matrix.os == macos-latest }}
+      run: brew install bash zsh fish tcsh just
+      run: wget https://github.com/nushell/nushell/releases/download/0.31.0/nu_0_31_0_macOS.zip
+
+    - name: Integration Test
+      env:
+        TARGET: ${{ matrix.target }}
+      uses: extractions/setup-just@v1
+      if: ${{ matrix.os == windows-latest }}
+      run: just
+      with:
+        args: all_windows
+      if: ${{ matrix.os != windows-latest }}
+      run: just
+      with:
+        args: all
+
+    - name: Integration Test
+      env:
+        TARGET: ${{ matrix.target }}
+      uses: extractions/setup-just@v1
+      if: ${{ matrix.os != windows-latest }}
+      run: just
+      with:
+        args: all
+      if: ${{ matrix.os == windows-latest }}
+      run: just
+      with:
+        args: all_windows

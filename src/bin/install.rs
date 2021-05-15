@@ -7,19 +7,13 @@ use log::{debug, info};
 use std::borrow::Cow;
 #[cfg(target_family = "windows")]
 use std::fs::read;
-#[cfg(target_family = "unix")]
-use {
-    std::ffi::OsStr,
-    std::fs::read_to_string,
-    std::io::LineWriter,
-    log::warn,
-    std::fs::copy,
-};
 use std::fs::{create_dir_all, remove_dir_all, remove_file, OpenOptions};
 use std::io::ErrorKind;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 use structopt::StructOpt;
+#[cfg(target_family = "unix")]
+use {log::warn, std::ffi::OsStr, std::fs::copy, std::fs::read_to_string, std::io::LineWriter};
 
 const PKGNAME: &str = env!("CARGO_PKG_NAME");
 #[cfg(target_family = "unix")]
@@ -346,8 +340,8 @@ fn modify_bin_lua(clink_dir: &Path, bin_dir: &Path, dryrun: bool) -> Result<()> 
     let clink_file = clink_dir.join(format!("{}.lua", PKGNAME));
     let original = read(clink_file.as_path())?;
     let mut file = OpenOptions::new().write(true).open(clink_file)?;
-    file.write(custom_install.as_bytes())?;
-    file.write(original.as_ref())?;
+    file.write_all(custom_install.as_bytes())?;
+    file.write_all(original.as_ref())?;
     Ok(())
 }
 
@@ -414,7 +408,7 @@ fn handle_install(config: &Config, opts: &InstallOpts) -> Result<()> {
     #[cfg(target_family = "windows")]
     {
         let target = concatcp!(PKGNAME, ".exe");
-        let target_dir = shellexpand::env("$TARGET").unwrap_or(Cow::from(""));
+        let target_dir = shellexpand::env("$TARGET").unwrap_or_else(|_| Cow::from(""));
         target_dirs = [
             format_path!("target", target_dir.as_ref(), "release", target),
             format_path!("target", target_dir.as_ref(), "debug", target),
@@ -446,27 +440,27 @@ fn handle_install(config: &Config, opts: &InstallOpts) -> Result<()> {
     #[cfg(target_family = "windows")]
     {
         copy_in_dryrun(
-            format_path!("scripts", "install", concatcp!(PKGNAME, ".lua")).as_path(),
+            format_path!("scripts", concatcp!(PKGNAME, ".lua")).as_path(),
             &config.clink_dir,
             opts.dryrun,
         )?;
         copy_in_dryrun(
-            format_path!("scripts", "install", "j.bat").as_path(),
+            format_path!("scripts", "j.bat").as_path(),
             &config.bin_dir,
             opts.dryrun,
         )?;
         copy_in_dryrun(
-            format_path!("scripts", "install", "jc.bat").as_path(),
+            format_path!("scripts", "jc.bat").as_path(),
             &config.bin_dir,
             opts.dryrun,
         )?;
         copy_in_dryrun(
-            format_path!("scripts", "install", "jo.bat").as_path(),
+            format_path!("scripts", "jo.bat").as_path(),
             &config.bin_dir,
             opts.dryrun,
         )?;
         copy_in_dryrun(
-            format_path!("scripts", "install", "jco.bat").as_path(),
+            format_path!("scripts", "jco.bat").as_path(),
             &config.bin_dir,
             opts.dryrun,
         )?;
@@ -478,27 +472,27 @@ fn handle_install(config: &Config, opts: &InstallOpts) -> Result<()> {
     #[cfg(target_family = "unix")]
     {
         copy_in_dryrun(
-            format_path!("scripts", "install", concatcp!(PKGNAME, ".sh")).as_path(),
+            format_path!("scripts", concatcp!(PKGNAME, ".sh")).as_path(),
             &config.etc_dir,
             opts.dryrun,
         )?;
         copy_in_dryrun(
-            format_path!("scripts", "install", concatcp!(PKGNAME, ".bash")).as_path(),
+            format_path!("scripts", concatcp!(PKGNAME, ".bash")).as_path(),
             &config.share_dir,
             opts.dryrun,
         )?;
         copy_in_dryrun(
-            format_path!("scripts", "install", concatcp!(PKGNAME, ".fish")).as_path(),
+            format_path!("scripts", concatcp!(PKGNAME, ".fish")).as_path(),
             &config.share_dir,
             opts.dryrun,
         )?;
         copy_in_dryrun(
-            format_path!("scripts", "install", concatcp!(PKGNAME, ".zsh")).as_path(),
+            format_path!("scripts", concatcp!(PKGNAME, ".zsh")).as_path(),
             &config.share_dir,
             opts.dryrun,
         )?;
         copy_in_dryrun(
-            format_path!("scripts", "install", "_j").as_path(),
+            format_path!("scripts", "_j").as_path(),
             &config.zshshare_dir,
             opts.dryrun,
         )?;
