@@ -3,17 +3,20 @@ all_windows: powershell cmd
 
 install:
 	#!/bin/sh
-	$src=$(target/debug/install --install | tail -n 1 | head -n 1 | awk '{print $(NF)}')
+	$src=$(target/$target/debug/install --install | tail -n 1 | head -n 1 | awk '{print $(NF)}')
 	if [ $? -ne 0 ]; then
 		exit 1
 	fi
 	export __SRC_FILE=$src
 
 install_cmd:
-	target/debug/install --install
+	target/%target%/debug/install --install
 
 uninstall:
-	target/debug/install --uninstall
+	target/$target/debug/install --uninstall
+
+uninstall_cmd:
+	target/%target%/debug/install --uninstall
 
 tests_cmd:
 	#!cmd /c
@@ -91,8 +94,8 @@ tcsh: install
 
 cmd: install_cmd
 	just tests_cmd
-	just uninstall
+	just uninstall_cmd
 
 powershell: install_cmd
 	just tests_powershell
-	just uninstall
+	just uninstall_cmd
