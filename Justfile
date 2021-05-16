@@ -3,7 +3,7 @@ all_windows: powershell cmd
 
 install:
 	#!/bin/bash --login
-	$src=$(target/$TARGET/debug/install --install | tail -n 1 | head -n 1 | awk '{print $(NF)}')
+	src=$(target/$TARGET/debug/install --install | tail -n 1 | head -n 1 | awk '{print $(NF)}')
 	if [ $? -ne 0 ]; then
 		exit 1
 	fi

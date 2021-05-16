@@ -174,6 +174,26 @@ fn is_empty_dir(path: &Path) -> Result<bool> {
 
 #[cfg(target_family = "unix")]
 fn get_shell() -> String {
+    if let Ok(shell) = shellexpand::env("$BASH") {
+        if !shell.is_empty() {
+            return "bash".to_string();
+        }
+    }
+    if let Ok(shell) = shellexpand::env("$ZSH_NAME") {
+        if !shell.is_empty() {
+            return "zsh".to_string();
+        }
+    }
+    if let Ok(shell) = shellexpand::env("$__fish_datadir") {
+        if !shell.is_empty() {
+            return "fish".to_string();
+        }
+    }
+    if let Ok(shell) = shellexpand::env("$version") {
+        if !shell.is_empty() {
+            return "tcsh".to_string();
+        }
+    }
     Path::new(
         shellexpand::env("$SHELL")
             .unwrap_or_else(|_| Cow::from(""))
@@ -486,6 +506,11 @@ fn handle_install(config: &Config, opts: &InstallOpts) -> Result<()> {
         )?;
         copy_in_dryrun(
             format_path!("scripts", concatcp!(PKGNAME, ".zsh")).as_path(),
+            &config.share_dir,
+            opts.dryrun,
+        )?;
+        copy_in_dryrun(
+            format_path!("scripts", concatcp!(PKGNAME, ".tcsh")).as_path(),
             &config.share_dir,
             opts.dryrun,
         )?;
