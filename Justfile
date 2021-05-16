@@ -113,7 +113,7 @@ tests_powershell:
 
 tests_bash $SHELL="bash":
 	#!/usr/bin/env bash
-	source {{env_var(__SRC_FILE)}}
+	source {{env_var("__SRC_FILE")}}
 	cd
 	j
 	j -s
@@ -122,7 +122,7 @@ tests_bash $SHELL="bash":
 
 tests_fish $SHELL="fish":
 	#!/usr/bin/env fish
-	source {{env_var(__SRC_FILE)}}
+	source {{env_var("__SRC_FILE")}}
 	cd
 	j
 	j -s
@@ -131,7 +131,7 @@ tests_fish $SHELL="fish":
 
 tests_zsh $SHELL="zsh":
 	#!/usr/bin/env zsh
-	source {{env_var(__SRC_FILE)}}
+	source {{env_var("__SRC_FILE")}}
 	cd
 	j
 	j -s
@@ -140,7 +140,7 @@ tests_zsh $SHELL="zsh":
 
 tests_tcsh $SHELL="tcsh":
 	#!/usr/bin/env tcsh
-	source {{env_var(__SRC_FILE)}}
+	source {{env_var("__SRC_FILE")}}
 	cd
 	j
 	j -s
