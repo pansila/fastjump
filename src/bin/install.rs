@@ -396,24 +396,22 @@ fn handle_install(config: &Config, opts: &InstallOpts) -> Result<()> {
         create_dir_dryrun(&config.etc_dir, opts.dryrun)?;
     }
 
-    let target_dirs;
+    let target;
     #[cfg(target_family = "unix")]
     {
-        let target_dir = shellexpand::env("$target_dir").unwrap_or_else(|_| Cow::from(""));
-        target_dirs = [
-            format_path!("target", target_dir.as_ref(), "release", PKGNAME),
-            format_path!("target", target_dir.as_ref(), "debug", PKGNAME),
-        ];
+        target = PKGNAME;
     }
     #[cfg(target_family = "windows")]
     {
-        let target = concatcp!(PKGNAME, ".exe");
-        let target_dir = shellexpand::env("$TARGET").unwrap_or_else(|_| Cow::from(""));
-        target_dirs = [
-            format_path!("target", target_dir.as_ref(), "release", target),
-            format_path!("target", target_dir.as_ref(), "debug", target),
-        ];
+        target = concatcp!(PKGNAME, ".exe");
     }
+
+    let target_dir = shellexpand::env("$TARGET").unwrap_or_else(|_| Cow::from(""));
+    let target_dirs = [
+        format_path!("target", target_dir.as_ref(), "release", target),
+        format_path!("target", target_dir.as_ref(), "debug", target),
+    ];
+
     let mut found = false;
     for target in &target_dirs {
         if target.exists() {

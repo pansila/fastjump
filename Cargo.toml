@@ -45,12 +45,12 @@ version = "^0.8.3"
 
 # make dev builds faster by excluding debug symbols
 [profile.dev]
-#debug = false
+debug = false
 
 # use LTO for smaller binaries (that take longer to build)
 [profile.release]
-#opt-level = 'z'
-#lto = true
+opt-level = 'z'
+lto = true
 
 [package.metadata.deb]
 license-file = [ "LICENCE" ]
