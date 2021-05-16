@@ -1,8 +1,10 @@
-all: bash fish zsh tcsh
-all_windows: powershell cmd
+all: (sh 'bash') (sh 'fish') (sh 'zsh') (sh 'tcsh')
+#all_windows: powershell cmd
+all_windows: powershell
 
-install_bash $SHELL="bash":
-	#!/bin/bash
+install_sh shell:
+	#!/usr/bin/env {{shell}}
+	export SHELL={{shell}}
 	msg=$(target/$TARGET/debug/install --install 2>&1)
 	if [ $? -ne 0 ]; then
 		echo "$msg"
@@ -15,70 +17,11 @@ install_bash $SHELL="bash":
 		echo "Error: can not find source file"
 		exit 1
 	fi
-	export __SRC_FILE=$src
+	echo $src
 
-install_fish $SHELL="fish":
-	#!/bin/fish
-	msg=$(target/$TARGET/debug/install --install 2>&1)
-	if [ $? -ne 0 ]; then
-		echo "$msg"
-		echo "Error: failed to run install"
-		exit 1
-	fi
-	echo "$msg"
-	src=$(echo "$msg" | tail -n 1 | head -n 1 | awk '{print $(NF)}')
-	if [ -z $src ]; then
-		echo "Error: can not find source file"
-		exit 1
-	fi
-	export __SRC_FILE=$src
-
-install_zsh $SHELL="zsh":
-	#!/bin/zsh
-	msg=$(target/$TARGET/debug/install --install 2>&1)
-	if [ $? -ne 0 ]; then
-		echo "$msg"
-		echo "Error: failed to run install"
-		exit 1
-	fi
-	echo "$msg"
-	src=$(echo "$msg" | tail -n 1 | head -n 1 | awk '{print $(NF)}')
-	if [ -z $src ]; then
-		echo "Error: can not find source file"
-		exit 1
-	fi
-	export __SRC_FILE=$src
-
-install_tcsh $SHELL="tcsh":
-	#!/bin/tcsh
-	msg=$(target/$TARGET/debug/install --install 2>&1)
-	if [ $? -ne 0 ]; then
-		echo "$msg"
-		echo "Error: failed to run install"
-		exit 1
-	fi
-	echo "$msg"
-	src=$(echo "$msg" | tail -n 1 | head -n 1 | awk '{print $(NF)}')
-	if [ -z $src ]; then
-		echo "Error: can not find source file"
-		exit 1
-	fi
-	export __SRC_FILE=$src
-
-uninstall_bash $SHELL="bash":
-	#!/bin/bash
-	target/$TARGET/debug/install --uninstall
-
-uninstall_fish $SHELL="fish":
-	#!/bin/fish
-	target/$TARGET/debug/install --uninstall
-
-uninstall_zsh $SHELL="zsh":
-	#!/bin/zsh
-	target/$TARGET/debug/install --uninstall
-
-uninstall_tcsh $SHELL="tcsh":
-	#!/bin/tcsh
+uninstall_sh shell:
+	#!/usr/bin/env {{shell}}
+	export SHELL={{shell}}
 	target/$TARGET/debug/install --uninstall
 
 install_win:
@@ -111,57 +54,48 @@ tests_powershell:
 	j --add debug
 	j -s
 
-tests_bash $SHELL="bash":
+tests_bash rcfile $SHELL="bash":
 	#!/usr/bin/env bash
-	source {{env_var("__SRC_FILE")}}
+	source {{rcfile}}
 	cd
 	j
 	j -s
 	cd ..
 	j -s
 
-tests_fish $SHELL="fish":
+tests_fish rcfile $SHELL="fish":
 	#!/usr/bin/env fish
-	source {{env_var("__SRC_FILE")}}
+	source {{rcfile}}
 	cd
 	j
 	j -s
 	cd ..
 	j -s
 
-tests_zsh $SHELL="zsh":
+tests_zsh rcfile $SHELL="zsh":
 	#!/usr/bin/env zsh
-	source {{env_var("__SRC_FILE")}}
+	source {{rcfile}}
 	cd
 	j
 	j -s
 	cd ..
 	j -s
 
-tests_tcsh $SHELL="tcsh":
+tests_tcsh rcfile $SHELL="tcsh":
 	#!/usr/bin/env tcsh
-	source {{env_var("__SRC_FILE")}}
+	source {{rcfile}}
 	cd
 	j
 	j -s
 	cd ..
 	j -s
 
-bash: install_bash
-	just tests_bash
-	just uninstall_bash
-
-fish: install_fish
-	just tests_fish
-	just uninstall_fish
-
-zsh: install_zsh
-	just tests_zsh
-	just uninstall_zsh
-
-tcsh: install_tcsh
-	just tests_tcsh
-	just uninstall_tcsh
+sh shell:
+	#!/usr/bin/env {{shell}}
+	export SHELL={{shell}}
+	rcfile=$(just install_sh {{shell}})
+	just tests_{{shell}} $rcfile
+	just uninstall_sh {{shell}}
 
 cmd: install_win
 	just tests_cmd
