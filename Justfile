@@ -3,32 +3,64 @@ all_windows: powershell cmd
 
 install_bash $SHELL="bash":
 	#!/bin/bash
-	src=$(target/$TARGET/debug/install --install | tail -n 1 | head -n 1 | awk '{print $(NF)}')
+	msg=$(target/$TARGET/debug/install --install 2>&1)
 	if [ $? -ne 0 ]; then
+		echo "$msg"
+		echo "Error: failed to run install"
+		exit 1
+	fi
+	echo "$msg"
+	src=$(echo "$msg" | tail -n 1 | head -n 1 | awk '{print $(NF)}')
+	if [ -z $src ]; then
+		echo "Error: can not find source file"
 		exit 1
 	fi
 	export __SRC_FILE=$src
 
 install_fish $SHELL="fish":
 	#!/bin/fish
-	src=$(target/$TARGET/debug/install --install | tail -n 1 | head -n 1 | awk '{print $(NF)}')
+	msg=$(target/$TARGET/debug/install --install 2>&1)
 	if [ $? -ne 0 ]; then
+		echo "$msg"
+		echo "Error: failed to run install"
+		exit 1
+	fi
+	echo "$msg"
+	src=$(echo "$msg" | tail -n 1 | head -n 1 | awk '{print $(NF)}')
+	if [ -z $src ]; then
+		echo "Error: can not find source file"
 		exit 1
 	fi
 	export __SRC_FILE=$src
 
 install_zsh $SHELL="zsh":
 	#!/bin/zsh
-	src=$(target/$TARGET/debug/install --install | tail -n 1 | head -n 1 | awk '{print $(NF)}')
+	msg=$(target/$TARGET/debug/install --install 2>&1)
 	if [ $? -ne 0 ]; then
+		echo "$msg"
+		echo "Error: failed to run install"
+		exit 1
+	fi
+	echo "$msg"
+	src=$(echo "$msg" | tail -n 1 | head -n 1 | awk '{print $(NF)}')
+	if [ -z $src ]; then
+		echo "Error: can not find source file"
 		exit 1
 	fi
 	export __SRC_FILE=$src
 
 install_tcsh $SHELL="tcsh":
 	#!/bin/tcsh
-	src=$(target/$TARGET/debug/install --install | tail -n 1 | head -n 1 | awk '{print $(NF)}')
+	msg=$(target/$TARGET/debug/install --install 2>&1)
 	if [ $? -ne 0 ]; then
+		echo "$msg"
+		echo "Error: failed to run install"
+		exit 1
+	fi
+	echo "$msg"
+	src=$(echo "$msg" | tail -n 1 | head -n 1 | awk '{print $(NF)}')
+	if [ -z $src ]; then
+		echo "Error: can not find source file"
 		exit 1
 	fi
 	export __SRC_FILE=$src

@@ -34,6 +34,7 @@ jobs:
         profile: minimal
         toolchain: stable
         override: true
+        components: clippy, rustfmt
         target: ${{ matrix.target }}
 
     - name: Version
@@ -97,3 +98,9 @@ jobs:
         TARGET: ${{ matrix.target }}
       if: ${{ matrix.os != 'windows-latest' }}
       run: just all
+
+    - name: Clippy
+      run: cargo clippy --all --all-targets --all-features
+
+    - name: Format
+      run: cargo fmt --all -- --check
