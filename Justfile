@@ -1,16 +1,52 @@
 all: bash fish zsh tcsh
 all_windows: powershell cmd
 
-install:
-	#!/bin/bash --login
+install_bash $SHELL="bash":
+	#!/bin/bash
 	src=$(target/$TARGET/debug/install --install | tail -n 1 | head -n 1 | awk '{print $(NF)}')
 	if [ $? -ne 0 ]; then
 		exit 1
 	fi
 	export __SRC_FILE=$src
 
-uninstall:
-	#!/bin/sh
+install_fish $SHELL="fish":
+	#!/bin/fish
+	src=$(target/$TARGET/debug/install --install | tail -n 1 | head -n 1 | awk '{print $(NF)}')
+	if [ $? -ne 0 ]; then
+		exit 1
+	fi
+	export __SRC_FILE=$src
+
+install_zsh $SHELL="zsh":
+	#!/bin/zsh
+	src=$(target/$TARGET/debug/install --install | tail -n 1 | head -n 1 | awk '{print $(NF)}')
+	if [ $? -ne 0 ]; then
+		exit 1
+	fi
+	export __SRC_FILE=$src
+
+install_tcsh $SHELL="tcsh":
+	#!/bin/tcsh
+	src=$(target/$TARGET/debug/install --install | tail -n 1 | head -n 1 | awk '{print $(NF)}')
+	if [ $? -ne 0 ]; then
+		exit 1
+	fi
+	export __SRC_FILE=$src
+
+uninstall_bash $SHELL="bash":
+	#!/bin/bash
+	target/$TARGET/debug/install --uninstall
+
+uninstall_fish $SHELL="fish":
+	#!/bin/fish
+	target/$TARGET/debug/install --uninstall
+
+uninstall_zsh $SHELL="zsh":
+	#!/bin/zsh
+	target/$TARGET/debug/install --uninstall
+
+uninstall_tcsh $SHELL="tcsh":
+	#!/bin/tcsh
 	target/$TARGET/debug/install --uninstall
 
 install_win:
@@ -43,7 +79,7 @@ tests_powershell:
 	j --add debug
 	j -s
 
-tests_bash:
+tests_bash $SHELL="bash":
 	#!/usr/bin/env bash
 	source {{env_var(__SRC_FILE)}}
 	cd
@@ -52,7 +88,7 @@ tests_bash:
 	cd ..
 	j -s
 
-tests_fish:
+tests_fish $SHELL="fish":
 	#!/usr/bin/env fish
 	source {{env_var(__SRC_FILE)}}
 	cd
@@ -61,7 +97,7 @@ tests_fish:
 	cd ..
 	j -s
 
-tests_zsh:
+tests_zsh $SHELL="zsh":
 	#!/usr/bin/env zsh
 	source {{env_var(__SRC_FILE)}}
 	cd
@@ -70,7 +106,7 @@ tests_zsh:
 	cd ..
 	j -s
 
-tests_tcsh:
+tests_tcsh $SHELL="tcsh":
 	#!/usr/bin/env tcsh
 	source {{env_var(__SRC_FILE)}}
 	cd
@@ -79,21 +115,21 @@ tests_tcsh:
 	cd ..
 	j -s
 
-bash: install
-	just tests-bash
-	just uninstall
+bash: install_bash
+	just tests_bash
+	just uninstall_bash
 
-fish: install
-	just tests-fish
-	just uninstall
+fish: install_fish
+	just tests_fish
+	just uninstall_fish
 
-zsh: install
-	just tests-zsh
-	just uninstall
+zsh: install_zsh
+	just tests_zsh
+	just uninstall_zsh
 
-tcsh: install
-	just tests-tcsh
-	just uninstall
+tcsh: install_tcsh
+	just tests_tcsh
+	just uninstall_tcsh
 
 cmd: install_win
 	just tests_cmd

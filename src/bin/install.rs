@@ -222,7 +222,7 @@ fn check_opts(opts: &InstallOpts) -> Result<()> {
     #[cfg(target_family = "unix")]
     {
         let shell = get_shell();
-        if !SUPPORTED_SHELLS.contains(&shell.as_str()) {
+        if !shell.is_empty() && !SUPPORTED_SHELLS.contains(&shell.as_str()) {
             bail!(
                 "Unsupported shell: {}, we currently only support {:?}",
                 shell,
